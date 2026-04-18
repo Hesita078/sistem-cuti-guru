@@ -159,7 +159,7 @@ class PengajuanCutiController extends Controller
     $pengajuan = PengajuanCuti::findOrFail($id);
 
     // Optional: hanya boleh edit jika status masih pending
-    if ($pengajuan->status != 'Pending') {
+    if ($pengajuan->status != 'pending_admin'){
         return redirect()->route('pengajuan.index')
             ->with('error', 'Pengajuan tidak bisa diedit karena sudah diproses.');
     }
@@ -293,7 +293,7 @@ class PengajuanCutiController extends Controller
     public function indexPersetujuan()
     {
         $pengajuan = PengajuanCuti::with('user')
-            ->where('status', 'Menunggu Persetujuan Kepsek')
+            ->where('status', 'Menunggu Persetujuan Kepala Sekolah')
             ->latest()
             ->paginate(10);
 
@@ -308,7 +308,7 @@ class PengajuanCutiController extends Controller
 
         $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
 
-        if ($pengajuan->status != 'Menunggu Persetujuan Kepsek') {
+        if ($pengajuan->status != 'Menunggu Persetujuan Kepala Sekolah') {
             return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
         }
 
@@ -320,7 +320,7 @@ class PengajuanCutiController extends Controller
 
             // Update status pengajuan
             $pengajuan->update([
-                'status' => 'Disetujui',
+                'status' => 'Disetujui Kepala Sekolah',
                 'tanggal_persetujuan' => now(),
             ]);
 
@@ -376,14 +376,14 @@ class PengajuanCutiController extends Controller
         DB::beginTransaction();
         try {
             $pengajuan->update([
-                'status' => 'Ditolak',
+                'status' => 'Ditolak Kepala Sekolah',
                 'catatan_kepala_sekolah' => $request->catatan_kepala_sekolah,
                 'tanggal_persetujuan' => now(),
             ]);
 
             // Kirim email ke Guru
             try {
-                Mail::to($pengajuan->user->email)->send(new PengajuanCutiMail($pengajuan, 'ditolak'));
+                Mail::to($pengajuan->user->email)->send(new PengajuanCutiMail($pengajuan, 'ditolak kepala sekolah'));
             } catch (\Exception $e) {
                 \Log::error('Email gagal dikirim: ' . $e->getMessage());
             }

@@ -57,7 +57,7 @@
                                     @endif
                                 </td>
 
-                                <td>{{ $g->telepon ?? '-' }}</td>
+                                <td>{{ $g->no_telp ?? '-' }}</td>
 
                                 <!-- ✅ HAK CUTI -->
                                 <td>
@@ -71,9 +71,9 @@
                                 <!-- ✅ SISA CUTI -->
                                 <td>
                                     @if($g->role == 'guru')
-                                        @if($g->sisa_hak_cuti == 0)
+                                        @if($g->hak_cuti == 0)
                                             <span class="badge bg-danger">{{ $g->sisa_hak_cuti }} hari</span>
-                                        @elseif($g->sisa_hak_cuti <= 3)
+                                        @elseif($g->hak_cuti <= 3)
                                             <span class="badge bg-warning">{{ $g->sisa_hak_cuti }} hari</span>
                                         @else
                                             <span class="badge bg-success">{{ $g->sisa_hak_cuti }} hari</span>

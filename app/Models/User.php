@@ -51,21 +51,18 @@ class User extends Authenticatable
         return $this->hasMany(HistoriCuti::class);
     }
 
-    // Helper method: Cek apakah user adalah Kepala Sekolah
     public function isKepalaSekolah()
     {
-        return $this->role === 'Kepala Sekolah';
+        return strtolower($this->role) === 'kepala_sekolah';
     }
 
-    // Helper method: Cek apakah user adalah Admin
     public function isAdmin()
     {
-        return $this->role === 'Admin';
+        return strtolower($this->role) === 'admin';
     }
 
-    // Helper method: Cek apakah user adalah Guru
     public function isGuru()
     {
-        return $this->role === 'Guru';
+        return strtolower($this->role) === 'guru';
     }
 }

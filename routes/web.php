@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PengajuanCutiController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GuruController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +42,7 @@ Route::middleware('auth')->group(function () {
     // ============================================
     // GURU ROUTES
     // ============================================
-    Route::middleware('role:Guru')->group(function () {
+    Route::middleware('role:guru')->group(function () {
 
         // Pengajuan Cuti
         Route::get('/pengajuan', [PengajuanCutiController::class, 'index'])->name('pengajuan.index');
@@ -59,7 +60,7 @@ Route::middleware('auth')->group(function () {
     // ============================================
     // ADMIN ROUTES
     // ============================================
-    Route::middleware('role:Admin')->group(function () {
+    Route::middleware('role:admin')->group(function () {
 
         // Verifikasi Pengajuan
         Route::get('/verifikasi', [PengajuanCutiController::class, 'indexVerifikasi'])->name('verifikasi.index');
@@ -71,7 +72,7 @@ Route::middleware('auth')->group(function () {
     // ============================================
     // KEPALA SEKOLAH ROUTES
     // ============================================
-    Route::middleware('role:Kepala Sekolah')->group(function () {
+    Route::middleware('role:kepala_sekolah')->group(function () {
 
         // Persetujuan Pengajuan
         Route::get('/persetujuan', [PengajuanCutiController::class, 'indexPersetujuan'])->name('persetujuan.index');
@@ -83,7 +84,7 @@ Route::middleware('auth')->group(function () {
     // ============================================
     // LAPORAN ROUTES (Admin & Kepala Sekolah)
     // ============================================
-    Route::middleware('role:Admin,Kepala Sekolah')->group(function () {
+    Route::middleware('role:admin,kepala_sekolah')->group(function () {
 
         Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('/laporan/pengajuan', [LaporanController::class, 'filterPengajuan'])->name('laporan.pengajuan');
@@ -101,8 +102,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/guru/{id}/activate', [UserController::class, 'activate'])->name('admin.guru.activate');
     Route::post('/admin/guru/{id}/reset-hak-cuti', [UserController::class, 'resetHakCuti'])->name('admin.guru.reset-hak-cuti');
 
-    Route::prefix('admin')->name('admin.')->group(function () {
-        Route::resource('guru', UserController::class);
+    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+        Route::resource('guru', GuruController::class);
     });
 
+    Route::middleware(['auth'])->group(function () {
+
+        // hanya admin
+        Route::middleware('admin')->group(function () {
+            // Route::resource('admin/guru', GuruController::class);
+        });
+
+    });
 });

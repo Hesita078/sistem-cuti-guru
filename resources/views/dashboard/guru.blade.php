@@ -72,7 +72,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-2">Disetujui</h6>
+                        <h6 class="text-muted mb-2">Disetujui Kepala Sekolah</h6>
                         <h2 class="mb-0">{{ $pengajuanDisetujui }}</h2>
                         <small class="text-muted">pengajuan</small>
                     </div>
@@ -156,16 +156,18 @@
                                         @php
                                             $status = strtolower(trim($item->status));
                                         @endphp
-                                        @if($status == 'menunggu verifikasi')
-                                            <span class="badge bg-warning">Menunggu Verifikasi Admin</span>
-                                        @elseif($status == 'menunggu persetujuan')
-                                            <span class="badge bg-primary">Menunggu Persetujuan Kepsek</span>
-                                        @elseif($status == 'verifikasi')
-                                            <span class="badge bg-info">Verifikasi Admin</span>
-                                        @elseif($status == 'disetujui')
-                                            <span class="badge bg-success">Disetujui Kepsek</span>
+                                        @if($status == 'menunggu verifikasi admin')
+                                            <span class="badge bg-warning">Menunggu verifikasi admin</span>
+                                        @elseif($status == 'menunggu persetujuan kepala sekolah')
+                                            <span class="badge bg-primary">Menunggu persetujuan kepala sekolah</span>
+                                        @elseif($status == 'disetujui kepala sekolah')
+                                            <span class="badge bg-success">Disetujui kepala sekolah</span>
+                                        @elseif($status == 'ditolak admin')
+                                            <span class="badge bg-danger">Ditolak admin</span>
+                                        @elseif($status == 'ditolak kepala sekolah')
+                                            <span class="badge bg-danger">Ditolak kepala sekolah</span>
                                         @else
-                                            <span class="badge bg-danger">Ditolak Admin</span>
+                                            <span class="badge bg-secondary">{{ $item->status ?? 'Status kosong' }}</span>
                                         @endif
                                     </td>
                                     <td>

@@ -63,4 +63,15 @@ class PengajuanCuti extends Model
 
         return 'CUTI-' . $date . '-' . $newNumber;
     }
+
+    public function getStatusBadgeClass()
+{
+    return match ($this->status) {
+        'menunggu' => 'secondary',
+        'disetujui_admin' => 'info',
+        'disetujui_kepsek' => 'success',
+        'ditolak' => 'danger',
+        default => 'secondary',
+    };
+}
 }

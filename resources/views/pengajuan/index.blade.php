@@ -47,21 +47,35 @@
                                     <span class="badge bg-warning text-dark">
                                         <i class="bi bi-clock me-1"></i>Menunggu Verifikasi Admin
                                     </span>
+
                                 @elseif($item->status == 'Diverifikasi Admin')
                                     <span class="badge bg-info">
                                         <i class="bi bi-check me-1"></i>Diverifikasi Admin
                                     </span>
+
                                 @elseif($item->status == 'Menunggu Persetujuan Kepala Sekolah')
                                     <span class="badge bg-primary">
                                         <i class="bi bi-hourglass-split me-1"></i>Menunggu Persetujuan Kepala Sekolah
                                     </span>
-                                @elseif($item->status == 'Disetujui')
+
+                                @elseif($item->status == 'Disetujui Kepala Sekolah')
                                     <span class="badge bg-success">
                                         <i class="bi bi-check-circle me-1"></i>Disetujui Kepala Sekolah
                                     </span>
+
                                 @elseif($item->status == 'Ditolak Admin')
                                     <span class="badge bg-danger">
                                         <i class="bi bi-x-circle me-1"></i>Ditolak Admin
+                                    </span>
+
+                                @elseif($item->status == 'Ditolak Kepala Sekolah') {{-- INI YANG KURANG --}}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>Ditolak Kepala Sekolah
+                                    </span>
+
+                                @else
+                                    <span class="badge bg-secondary">
+                                        {{ $item->status }}
                                     </span>
                                 @endif
                             </td>

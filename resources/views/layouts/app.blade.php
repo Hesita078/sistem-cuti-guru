@@ -240,6 +240,9 @@
             <h4>Sistem Cuti Guru</h4>
             <small style="opacity: 0.8;">SDN KINCANG 01</small>
         </div>
+        <div style="margin-top:10px; font-size:12px;">
+            Role: {{ auth()->user()->role }}
+        </div>
 
         <ul class="sidebar-menu">
             <li>
@@ -292,13 +295,14 @@
                 </a>
             </li>
 
+            @if(auth()->user()->isAdmin())
             <li>
-                <a href="{{ route('admin.guru.index') }}" class="{{ request()->routeIs('admin.guru.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.guru.index') }}">
                     <i class="bi bi-people"></i>
                     <span>Manajemen User</span>
                 </a>
             </li>
-
+        @endif
             <li>
                 <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                     <i class="bi bi-box-arrow-right"></i>
@@ -306,7 +310,6 @@
                 </a>
             </li>
         </ul>
-
 
 
 

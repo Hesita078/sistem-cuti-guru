@@ -92,9 +92,14 @@
                     </div>
                     <div class="progress" style="height: 25px;">
                         @php
+                        if ($guru->hak_cuti_tahunan > 0) {
                             $persentase = ($guru->sisa_hak_cuti / $guru->hak_cuti_tahunan) * 100;
-                            $color = $persentase > 50 ? 'success' : ($persentase > 25 ? 'warning' : 'danger');
-                        @endphp
+                        } else {
+                            $persentase = 0;
+                        }
+
+                        $color = $persentase > 50 ? 'success' : ($persentase > 25 ? 'warning' : 'danger');
+                    @endphp
                         <div class="progress-bar bg-{{ $color }}" style="width: {{ $persentase }}%;">
                             {{ $guru->sisa_hak_cuti }} hari
                         </div>
