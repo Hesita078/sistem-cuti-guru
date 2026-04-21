@@ -69,7 +69,8 @@
                                     </span>
 
                                 @elseif($item->status == 'Ditolak Kepala Sekolah') {{-- INI YANG KURANG --}}
-                                    <span class="badge bg-secondary">
+                                    <span class="badge bg-secondary
+                                    ">
                                         <i class="bi bi-x-circle me-1"></i>Ditolak Kepala Sekolah
                                     </span>
 
