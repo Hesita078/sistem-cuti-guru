@@ -81,7 +81,8 @@
                                 @endif
                             </td>
                             <td>
-                                <small>{{ $item->created_at->format('d/m/Y H:i') }}</small>
+                                <
+                                small>{{ $item->created_at->format('d/m/Y H:i') }}</small>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
