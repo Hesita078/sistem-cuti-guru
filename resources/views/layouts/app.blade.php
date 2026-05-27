@@ -267,6 +267,9 @@
                         <i class="bi bi-check-circle"></i>
                         <span>Verifikasi Cuti</span>
                     </a>
+                    <a href="{{ route('admin.cuti-bersama.index') }}">
+                        <i class="bi bi-calendar-x"></i> Cuti Bersama
+                    </a>
                 </li>
             @endif
 

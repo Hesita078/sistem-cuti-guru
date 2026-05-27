@@ -6,11 +6,12 @@ use Illuminate\Http\Request;
 use App\Models\PengajuanCuti;
 use App\Models\HistoriCuti;
 use App\Models\User;
+use App\Models\CutiBersama;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use App\Mail\PengajuanCutiMail;
-use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Controllers\NotifikasiController;
 
 class PengajuanCutiController extends Controller
 {
@@ -33,7 +34,6 @@ class PengajuanCutiController extends Controller
     {
         $user = auth()->user();
 
-        // Cek hak cuti
         if ($user->hak_cuti <= 0) {
             return redirect()->route('pengajuan.index')
                 ->with('error', 'Hak cuti Anda sudah habis. Tidak dapat mengajukan cuti.');
@@ -47,151 +47,273 @@ class PengajuanCutiController extends Controller
     {
         $user = auth()->user();
 
-        // Validasi
+        // ============================================
+        // VALIDASI DASAR
+        // ============================================
         $validated = $request->validate([
-            'jenis_cuti' => 'required|in:Cuti Tahunan,Cuti Sakit,Cuti Melahirkan,Cuti Bersama,Cuti Penting',
-            'tanggal_mulai' => 'required|date|after_or_equal:today',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'alasan' => 'required|string|min:10',
-            'file_pendukung' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'jenis_cuti'       => 'required|in:Cuti Tahunan,Cuti Sakit,Cuti Melahirkan,Cuti Ibadah Haji,Cuti Penting',
+            'tanggal_mulai'    => 'required|date|after_or_equal:today',
+            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
+            'alasan'           => 'required|string|min:10',
+            'surat_dokter'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'surat_melahirkan' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'surat_haji'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'dokumen_penting'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
-        // Hitung jumlah hari
-        $tanggalMulai = Carbon::parse($request->tanggal_mulai);
+        $tanggalMulai   = Carbon::parse($request->tanggal_mulai);
         $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
-        $jumlahHari = $tanggalMulai->diffInDays($tanggalSelesai) + 1;
 
-        // Cek hak cuti cukup atau tidak
-        if ($jumlahHari > $user->hak_cuti) {
-            return back()->with('error', 'Hak cuti Anda tidak mencukupi. Anda hanya memiliki ' . $user->hak_cuti . ' hari cuti.')
-                ->withInput();
+
+        // ============================================
+        // VALIDASI: TIDAK BOLEH HARI WEEKEND
+        // ============================================
+        if ($tanggalMulai->isWeekend()) {
+            return back()->withErrors([
+                'tanggal_mulai' => 'Tanggal mulai tidak boleh hari Sabtu atau Minggu.'
+            ])->withInput();
         }
 
-        DB::beginTransaction();
-        try {
-            // Upload file jika ada
-            $filePath = null;
-            if ($request->hasFile('file_pendukung')) {
-                $filePath = $request->file('file_pendukung')->store('cuti-documents', 'public');
+        if ($tanggalSelesai->isWeekend()) {
+            return back()->withErrors([
+                'tanggal_selesai' => 'Tanggal selesai tidak boleh hari Sabtu atau Minggu.'
+            ])->withInput();
+        }
+
+
+        // ============================================
+        // VALIDASI: TIDAK BOLEH TANGGAL CUTI BERSAMA
+        // ============================================
+        $cutiBersamaMulai = CutiBersama::where('tanggal', $tanggalMulai->format('Y-m-d'))->first();
+
+        if ($cutiBersamaMulai) {
+            return back()->withErrors([
+                'tanggal_mulai' => "Tanggal mulai adalah Cuti Bersama: \"{$cutiBersamaMulai->nama}\". Silakan pilih tanggal lain."
+            ])->withInput();
+        }
+
+        $cutiBersamaSelesai = CutiBersama::where('tanggal', $tanggalSelesai->format('Y-m-d'))->first();
+
+        if ($cutiBersamaSelesai) {
+            return back()->withErrors([
+                'tanggal_selesai' => "Tanggal selesai adalah Cuti Bersama: \"{$cutiBersamaSelesai->nama}\". Silakan pilih tanggal lain."
+            ])->withInput();
+        }
+
+
+        // ============================================
+        // HITUNG HARI KERJA (exclude weekend & cuti bersama)
+        // ============================================
+        $cutiBersamaDalamRange = CutiBersama::whereBetween('tanggal', [
+            $tanggalMulai->format('Y-m-d'),
+            $tanggalSelesai->format('Y-m-d'),
+        ])->pluck('tanggal')
+          ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))
+          ->toArray();
+
+        $jumlahHari = 0;
+        $current    = $tanggalMulai->copy();
+
+        while ($current->lte($tanggalSelesai)) {
+
+            if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $cutiBersamaDalamRange)) {
+                $jumlahHari++;
             }
 
-            // Generate kode pengajuan
+            $current->addDay();
+        }
+
+
+        // ============================================
+        // VALIDASI CUTI TAHUNAN
+        // ============================================
+        if ($request->jenis_cuti == 'Cuti Tahunan') {
+
+            if ($user->hak_cuti <= 0) {
+                return back()
+                    ->with('error', 'Hak cuti tahunan Anda sudah habis.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari > $user->hak_cuti) {
+                return back()
+                    ->with('error', 'Pengajuan melebihi sisa hak cuti Anda.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari > 12) {
+                return back()
+                    ->with('error', 'Cuti tahunan maksimal 12 hari.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari < 3) {
+                return back()
+                    ->with('error', 'Minimal cuti tahunan adalah 3 hari.')
+                    ->withInput();
+            }
+        }
+
+
+        // ============================================
+        // VALIDASI CUTI SAKIT
+        // ============================================
+        if ($request->jenis_cuti == 'Cuti Sakit') {
+
+            if (!$request->hasFile('surat_dokter')) {
+                return back()
+                    ->with('error', 'Surat dokter wajib diupload untuk cuti sakit.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari > 14) {
+                return back()
+                    ->with('error', 'Cuti sakit ringan maksimal 14 hari.')
+                    ->withInput();
+            }
+        }
+
+
+        // ============================================
+        // VALIDASI CUTI MELAHIRKAN
+        // ============================================
+        if ($request->jenis_cuti == 'Cuti Melahirkan') {
+
+            if (!$request->hasFile('surat_melahirkan')) {
+                return back()
+                    ->with('error', 'Surat melahirkan wajib diupload.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari > 90) {
+                return back()
+                    ->with('error', 'Cuti melahirkan maksimal 3 bulan.')
+                    ->withInput();
+            }
+        }
+
+
+        // ============================================
+        // VALIDASI CUTI HAJI
+        // ============================================
+        if ($request->jenis_cuti == 'Cuti Ibadah Haji') {
+
+            if (!$request->hasFile('surat_haji')) {
+                return back()
+                    ->with('error', 'Surat keberangkatan haji wajib diupload.')
+                    ->withInput();
+            }
+        }
+
+
+        // ============================================
+        // VALIDASI CUTI PENTING
+        // ============================================
+        if ($request->jenis_cuti == 'Cuti Penting') {
+
+            if (!$request->hasFile('dokumen_penting')) {
+                return back()
+                    ->with('error', 'Dokumen pendukung wajib diupload.')
+                    ->withInput();
+            }
+
+            if ($jumlahHari > 30) {
+                return back()
+                    ->with('error', 'Cuti alasan penting maksimal 30 hari.')
+                    ->withInput();
+            }
+        }
+
+
+        DB::beginTransaction();
+
+        try {
+
+            // ============================================
+            // UPLOAD FILE
+            // ============================================
+            $filePath = null;
+
+            if ($request->hasFile('surat_dokter')) {
+                $filePath = $request->file('surat_dokter')->store('cuti-documents', 'public');
+            } elseif ($request->hasFile('surat_melahirkan')) {
+                $filePath = $request->file('surat_melahirkan')->store('cuti-documents', 'public');
+            } elseif ($request->hasFile('surat_haji')) {
+                $filePath = $request->file('surat_haji')->store('cuti-documents', 'public');
+            } elseif ($request->hasFile('dokumen_penting')) {
+                $filePath = $request->file('dokumen_penting')->store('cuti-documents', 'public');
+            }
+
+
+            // ============================================
+            // GENERATE KODE & SIMPAN PENGAJUAN
+            // ============================================
             $kodePengajuan = PengajuanCuti::generateKodePengajuan();
 
-            // Simpan pengajuan
             $pengajuan = PengajuanCuti::create([
-                'user_id' => $user->id,
+                'user_id'        => $user->id,
                 'kode_pengajuan' => $kodePengajuan,
-                'jenis_cuti' => $request->jenis_cuti,
-                'tanggal_mulai' => $request->tanggal_mulai,
-                'tanggal_selesai' => $request->tanggal_selesai,
-                'jumlah_hari' => $jumlahHari,
-                'alasan' => $request->alasan,
+                'jenis_cuti'     => $request->jenis_cuti,
+                'tanggal_mulai'  => $request->tanggal_mulai,
+                'tanggal_selesai'=> $request->tanggal_selesai,
+                'jumlah_hari'    => $jumlahHari,
+                'alasan'         => $request->alasan,
                 'file_pendukung' => $filePath,
-                'status' => 'Menunggu Verifikasi Admin',
+                'status'         => 'Menunggu Verifikasi Admin',
             ]);
 
-            // Kirim email notifikasi ke Admin
+
+            // ============================================
+            // WHATSAPP ADMIN
+            // ============================================
             try {
-                $admin = User::where('role', 'Admin')->first();
+
+                $admin = User::where('role', 'admin')->first();
+
                 if ($admin) {
-                    Mail::to($admin->email)->send(new PengajuanCutiMail($pengajuan, 'pengajuan_baru'));
+
+                    app(NotifikasiController::class)->kirimWa(
+                        $admin->no_telp,
+                        'pengajuan_baru'
+                    );
+
                 }
+
             } catch (\Exception $e) {
-                // Log error tapi tetap lanjut
-                \Log::error('Email gagal dikirim: ' . $e->getMessage());
+
+                \Log::error('WA gagal dikirim: ' . $e->getMessage());
+
             }
 
             DB::commit();
 
-            return redirect()->route('pengajuan.index')
+            return redirect()
+                ->route('pengajuan.index')
                 ->with('success', 'Pengajuan cuti berhasil diajukan dengan kode: ' . $kodePengajuan);
 
         } catch (\Exception $e) {
+
             DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+
+            return back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
                 ->withInput();
         }
     }
+
 
     // GURU: Lihat detail pengajuan
     public function show($id)
     {
         $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
 
-        // Pastikan guru hanya bisa lihat pengajuannya sendiri
-        if (auth()->user()->isGuru() && $pengajuan->user_id != auth()->id()) {
-            abort(403, 'Anda tidak memiliki akses ke pengajuan ini.');
+        if (auth()->user()->role == 'guru' && $pengajuan->user_id != auth()->id()) {
+            abort(403, 'Anda tidak memiliki akses.');
         }
 
         return view('pengajuan.show', compact('pengajuan'));
     }
 
-    // GURU: Hapus pengajuan (hanya jika masih menunggu)
-    public function destroy($id)
-    {
-        $pengajuan = PengajuanCuti::findOrFail($id);
-
-        // Cek kepemilikan
-        if ($pengajuan->user_id != auth()->id()) {
-            abort(403);
-        }
-
-        // Hanya bisa hapus jika masih menunggu
-        if ($pengajuan->status != 'Menunggu Verifikasi Admin') {
-            return back()->with('error', 'Tidak dapat menghapus pengajuan yang sudah diproses.');
-        }
-
-        // Hapus file jika ada
-        if ($pengajuan->file_pendukung) {
-            Storage::disk('public')->delete($pengajuan->file_pendukung);
-        }
-
-        $pengajuan->delete();
-
-        return redirect()->route('pengajuan.index')
-            ->with('success', 'Pengajuan berhasil dihapus.');
-    }
-
-    // GURU: Edit Pengajuan
-    public function edit($id)
-    {
-    $pengajuan = PengajuanCuti::findOrFail($id);
-
-    // Optional: hanya boleh edit jika status masih pending
-    if ($pengajuan->status != 'pending_admin'){
-        return redirect()->route('pengajuan.index')
-            ->with('error', 'Pengajuan tidak bisa diedit karena sudah diproses.');
-    }
-
-    return view('pengajuan.edit', compact('pengajuan'));
-    }
-
-    // GURU: Update Pengajuan
-    public function update(Request $request, $id)
-    {
-    $pengajuan = PengajuanCuti::findOrFail($id);
-
-    if ($pengajuan->status != 'Pending') {
-        return redirect()->route('pengajuan.index')
-            ->with('error', 'Pengajuan tidak bisa diedit.');
-    }
-
-    $request->validate([
-        'tanggal_mulai' => 'required|date',
-        'tanggal_selesai' => 'required|date',
-        'alasan' => 'required|string'
-    ]);
-
-    $pengajuan->update([
-        'tanggal_mulai' => $request->tanggal_mulai,
-        'tanggal_selesai' => $request->tanggal_selesai,
-        'alasan' => $request->alasan
-    ]);
-
-    return redirect()->route('pengajuan.index')
-        ->with('success', 'Pengajuan berhasil diperbarui.');
-    }
 
     // ============================================
     // ADMIN METHODS
@@ -219,22 +341,22 @@ class PengajuanCutiController extends Controller
 
         DB::beginTransaction();
         try {
+
             $pengajuan->update([
-                'status' => 'Menunggu Persetujuan Kepala Sekolah',
+                'status'                   => 'Menunggu Persetujuan Kepala Sekolah',
                 'tanggal_verifikasi_admin' => now(),
             ]);
 
-            // Kirim email ke Kepala Sekolah
             try {
-                $kepalaSekolah = User::where('role', 'Kepala Sekolah')->first();
-                if ($kepalaSekolah) {
-                    Mail::to($kepalaSekolah->email)->send(new PengajuanCutiMail($pengajuan, 'menunggu_persetujuan'));
-                }
 
-                // Kirim email ke Guru
-                Mail::to($pengajuan->user->email)->send(new PengajuanCutiMail($pengajuan, 'diverifikasi_admin'));
+                // WA KE GURU
+                app(NotifikasiController::class)->kirimWa(
+                    $pengajuan->user->no_telp,
+                    'diverifikasi_admin'
+                );
+
             } catch (\Exception $e) {
-                \Log::error('Email gagal dikirim: ' . $e->getMessage());
+                \Log::error('WA gagal dikirim: ' . $e->getMessage());
             }
 
             DB::commit();
@@ -249,41 +371,53 @@ class PengajuanCutiController extends Controller
 
     // ADMIN: Tolak verifikasi
     public function tolakVerifikasi(Request $request, $id)
-    {
-        $request->validate([
-            'catatan_admin' => 'required|string|min:10',
+{
+    $request->validate([
+        'catatan_admin' => 'required|string|min:10',
+    ]);
+
+    $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
+
+    if ($pengajuan->status != 'Menunggu Verifikasi Admin') {
+        return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        // UPDATE STATUS
+        $pengajuan->update([
+            'status' => 'Ditolak Admin',
+            'catatan_admin' => $request->catatan_admin,
+            'tanggal_verifikasi_admin' => now(),
         ]);
 
-        $pengajuan = PengajuanCuti::findOrFail($id);
-
-        if ($pengajuan->status != 'Menunggu Verifikasi Admin') {
-            return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
-        }
-
-        DB::beginTransaction();
+        // KIRIM WHATSAPP
         try {
-            $pengajuan->update([
-                'status' => 'Ditolak Admin',
-                'catatan_admin' => $request->catatan_admin,
-                'tanggal_verifikasi_admin' => now(),
-            ]);
 
-            // Kirim email ke Guru
-            try {
-                Mail::to($pengajuan->user->email)->send(new PengajuanCutiMail($pengajuan, 'ditolak_admin'));
-            } catch (\Exception $e) {
-                \Log::error('Email gagal dikirim: ' . $e->getMessage());
-            }
-
-            DB::commit();
-
-            return back()->with('success', 'Pengajuan berhasil ditolak.');
+            app(NotifikasiController::class)->kirimWa(
+                $pengajuan->user->no_telp,
+                'ditolak_admin'
+            );
 
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+
+            \Log::error('WA gagal dikirim: ' . $e->getMessage());
+
         }
+
+        DB::commit();
+
+        return back()->with('success', 'Pengajuan berhasil ditolak.');
+
+    } catch (\Exception $e) {
+
+        DB::rollback();
+
+        return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
     }
+}
 
     // ============================================
     // KEPALA SEKOLAH METHODS
@@ -302,99 +436,161 @@ class PengajuanCutiController extends Controller
 
     // KEPALA SEKOLAH: Setujui cuti
     public function setujui($id)
-    {
-        // Mengambil Data
-        $data = PengajuanCuti::findOrFail($id);
+{
+    $data = PengajuanCuti::findOrFail($id);
 
-        $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
+    $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
 
-        if ($pengajuan->status != 'Menunggu Persetujuan Kepala Sekolah') {
-            return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
-        }
+    if ($pengajuan->status != 'Menunggu Persetujuan Kepala Sekolah') {
+        return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
+    }
 
-        DB::beginTransaction();
+    DB::beginTransaction();
+
+    try {
+
+        $user = $pengajuan->user;
+
+        $hakCutiSebelum = $user->hak_cuti;
+
+        $hakCutiSesudah = $hakCutiSebelum - $pengajuan->jumlah_hari;
+
+        // UPDATE STATUS
+        $pengajuan->update([
+            'status' => 'Disetujui Kepala Sekolah',
+            'tanggal_persetujuan' => now(),
+        ]);
+
+        // UPDATE HAK CUTI
+        $user->update([
+            'hak_cuti' => $hakCutiSesudah
+        ]);
+
+        // HISTORI CUTI
+        HistoriCuti::create([
+            'kode_pengajuan' => $data->kode_pengajuan,
+            'pengajuan_cuti_id' => $data->id,
+            'user_id' => $data->user_id,
+            'jenis_cuti' => $data->jenis_cuti,
+            'tanggal_mulai' => $data->tanggal_mulai,
+            'tanggal_selesai' => $data->tanggal_selesai,
+            'jumlah_hari' => $data->jumlah_hari,
+            'hak_cuti_sebelum' => $hakCutiSebelum,
+            'hak_cuti_sesudah' => $hakCutiSesudah,
+            'tanggal_persetujuan' => now(),
+        ]);
+
+        // KIRIM WHATSAPP
         try {
-            $user = $pengajuan->user;
-            $hakCutiSebelum = $user->hak_cuti;
-            $hakCutiSesudah = $hakCutiSebelum - $pengajuan->jumlah_hari;
 
-            // Update status pengajuan
-            $pengajuan->update([
-                'status' => 'Disetujui Kepala Sekolah',
-                'tanggal_persetujuan' => now(),
-            ]);
-
-            // Kurangi hak cuti user OTOMATIS
-            $user->update([
-                'hak_cuti' => $hakCutiSesudah
-            ]);
-
-            // Simpan ke histori cuti
-            HistoriCuti::create([
-                'kode_pengajuan' => $data->kode_pengajuan, //
-                'pengajuan_cuti_id' => $data->id, // INI YANG KURANG
-                'user_id' => $data->user_id,
-                'jenis_cuti' => $data->jenis_cuti,
-                'tanggal_mulai' => $data->tanggal_mulai,
-                'tanggal_selesai' => $data->tanggal_selesai,
-                'jumlah_hari' => $data->jumlah_hari,
-                'hak_cuti_sebelum' => $hakCutiSebelum,
-                'hak_cuti_sesudah' => $hakCutiSesudah,
-                'tanggal_persetujuan' => now(),
-            ]);
-
-            // Kirim email ke Guru
-            try {
-                Mail::to($user->email)->send(new PengajuanCutiMail($pengajuan, 'disetujui'));
-            } catch (\Exception $e) {
-                \Log::error('Email gagal dikirim: ' . $e->getMessage());
-            }
-
-            DB::commit();
-
-            return back()->with('success', 'Pengajuan berhasil disetujui. Hak cuti guru otomatis berkurang dari ' . $hakCutiSebelum . ' menjadi ' . $hakCutiSesudah . ' hari.');
+            app(NotifikasiController::class)->kirimWa(
+                $user->no_telp,
+                'disetujui_kepsek'
+            );
 
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+
+            \Log::error('WA gagal dikirim: ' . $e->getMessage());
+
         }
+
+        DB::commit();
+
+        return back()->with(
+            'success',
+            'Pengajuan berhasil disetujui.'
+        );
+
+    } catch (\Exception $e) {
+
+        DB::rollback();
+
+        return back()->with(
+            'error',
+            'Terjadi kesalahan: ' . $e->getMessage()
+        );
     }
+}
 
     // KEPALA SEKOLAH: Tolak cuti
     public function tolak(Request $request, $id)
-    {
-        $request->validate([
-            'catatan_kepala_sekolah' => 'required|string|min:10',
+{
+    $request->validate([
+        'catatan_kepala_sekolah' => 'required|string|min:10',
+    ]);
+
+    $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
+
+    if ($pengajuan->status != 'Menunggu Persetujuan Kepala Sekolah') {
+        return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        // UPDATE STATUS
+        $pengajuan->update([
+            'status' => 'Ditolak Kepala Sekolah',
+            'catatan_kepala_sekolah' => $request->catatan_kepala_sekolah,
+            'tanggal_persetujuan' => now(),
         ]);
 
-        $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
-
-        if ($pengajuan->status != 'Menunggu Persetujuan Kepala Sekolah') {
-            return back()->with('error', 'Pengajuan sudah diproses sebelumnya.');
-        }
-
-        DB::beginTransaction();
+        // KIRIM WHATSAPP
         try {
-            $pengajuan->update([
-                'status' => 'Ditolak Kepala Sekolah',
-                'catatan_kepala_sekolah' => $request->catatan_kepala_sekolah,
-                'tanggal_persetujuan' => now(),
-            ]);
 
-            // Kirim email ke Guru
-            try {
-                Mail::to($pengajuan->user->email)->send(new PengajuanCutiMail($pengajuan, 'ditolak kepala sekolah'));
-            } catch (\Exception $e) {
-                \Log::error('Email gagal dikirim: ' . $e->getMessage());
-            }
-
-            DB::commit();
-
-            return back()->with('success', 'Pengajuan berhasil ditolak.');
+            app(NotifikasiController::class)->kirimWa(
+                $pengajuan->user->no_telp,
+                'ditolak_kepsek'
+            );
 
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+
+            \Log::error('WA gagal dikirim: ' . $e->getMessage());
+
         }
+
+        DB::commit();
+
+        return back()->with('success', 'Pengajuan berhasil ditolak.');
+
+    } catch (\Exception $e) {
+
+        DB::rollback();
+
+        return back()->with(
+            'error',
+            'Terjadi kesalahan: ' . $e->getMessage()
+        );
+    }
+}
+
+    // ============================================
+    // CETAK PDF
+    // ============================================
+    public function cetakPdf($id)
+    {
+        $pengajuan = PengajuanCuti::with('user')->findOrFail($id);
+
+        if (!str_contains($pengajuan->status, 'Disetujui')) {
+            abort(403, 'Formulir hanya bisa dicetak jika pengajuan sudah disetujui.');
+        }
+
+        if (auth()->user()->role == 'guru' && $pengajuan->user_id != auth()->id()) {
+            abort(403, 'Anda tidak memiliki akses.');
+        }
+
+        $historiCuti = \App\Models\HistoriCuti::where('pengajuan_cuti_id', $pengajuan->id)->first();
+
+        $pdf = Pdf::loadView('pengajuan.cetak-pdf', [
+            'pengajuan'      => $pengajuan,
+            'histori'        => $historiCuti,
+            'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
+            'nip_kepala'     => '197001051995031010',
+        ])->setPaper('a4', 'portrait');
+
+        $namaFile = 'Formulir_Cuti_' . $pengajuan->kode_pengajuan . '.pdf';
+
+        return $pdf->download($namaFile);
     }
 }

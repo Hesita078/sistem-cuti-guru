@@ -28,9 +28,20 @@ class DashboardController extends Controller
     {
         $data = [
             'totalGuru' => User::where('role', 'Guru')->count(),
-            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Persetujuan Kepala Sekolah')->count(),
-            'pengajuanDisetujui' => PengajuanCuti::where('status', 'Disetujui')->count(),
-            'pengajuanDitolak' => PengajuanCuti::whereIn('status', ['Ditolak', 'Ditolak Admin'])->count(),
+
+            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Persetujuan Kepala Sekolah')
+                ->count(),
+
+            // DIPERBAIKI
+            'pengajuanDisetujui' => PengajuanCuti::where('status', 'Disetujui Kepala Sekolah')
+                ->count(),
+
+            // DIPERBAIKI
+            'pengajuanDitolak' => PengajuanCuti::whereIn('status', [
+                'Ditolak Kepala Sekolah',
+                'Ditolak Admin'
+            ])->count(),
+
             'pengajuanTerbaru' => PengajuanCuti::with('user')
                 ->where('status', 'Menunggu Persetujuan Kepala Sekolah')
                 ->latest()
@@ -46,9 +57,17 @@ class DashboardController extends Controller
     {
         $data = [
             'totalGuru' => User::where('role', 'Guru')->count(),
-            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Verifikasi Admin')->count(),
-            'pengajuanDiverifikasi' => PengajuanCuti::where('status', 'Diverifikasi Admin')->count(),
-            'pengajuanDitolak' => PengajuanCuti::where('status', 'Ditolak Admin')->count(),
+
+            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Verifikasi Admin')
+                ->count(),
+
+            // DIPERBAIKI
+            'pengajuanDiverifikasi' => PengajuanCuti::where('status', 'Menunggu Persetujuan Kepala Sekolah')
+                ->count(),
+
+            'pengajuanDitolak' => PengajuanCuti::where('status', 'Ditolak Admin')
+                ->count(),
+
             'pengajuanTerbaru' => PengajuanCuti::with('user')
                 ->where('status', 'Menunggu Verifikasi Admin')
                 ->latest()
@@ -66,20 +85,35 @@ class DashboardController extends Controller
 
         $data = [
             'hakCuti' => $user->hak_cuti,
-            'totalPengajuan' => PengajuanCuti::where('user_id', $user->id)->count(),
+
+            'totalPengajuan' => PengajuanCuti::where('user_id', $user->id)
+                ->count(),
+
             'pengajuanMenunggu' => PengajuanCuti::where('user_id', $user->id)
-                ->whereIn('status', ['Menunggu Verifikasi Admin', 'Menunggu Persetujuan Kepala Sekolah'])
+                ->whereIn('status', [
+                    'Menunggu Verifikasi Admin',
+                    'Menunggu Persetujuan Kepala Sekolah'
+                ])
                 ->count(),
+
+            // DIPERBAIKI
             'pengajuanDisetujui' => PengajuanCuti::where('user_id', $user->id)
-                ->where('status', 'Disetujui')
+                ->where('status', 'Disetujui Kepala Sekolah')
                 ->count(),
+
+            // DIPERBAIKI
             'pengajuanDitolak' => PengajuanCuti::where('user_id', $user->id)
-                ->whereIn('status', ['Ditolak', 'Ditolak Admin'])
+                ->whereIn('status', [
+                    'Ditolak Kepala Sekolah',
+                    'Ditolak Admin'
+                ])
                 ->count(),
+
             'pengajuanTerbaru' => PengajuanCuti::where('user_id', $user->id)
                 ->latest()
                 ->take(5)
                 ->get(),
+
             'historiCuti' => HistoriCuti::where('user_id', $user->id)
                 ->latest()
                 ->take(5)

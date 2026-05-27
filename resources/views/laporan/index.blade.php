@@ -11,7 +11,7 @@
                 <div class="mb-3">
                     <i class="bi bi-file-text text-primary" style="font-size: 64px;"></i>
                 </div>
-                <h5 class="card-title">Laporan Pengajuan Cuti dan Izin</h5>
+                <h5 class="card-title">Histori Pengajuan Cuti dan Izin</h5>
                 <p class="card-text text-muted">Lihat semua data pengajuan cuti dengan filter tanggal, status, dan jenis cuti.</p>
                 <a href="{{ route('laporan.pengajuan') }}" class="btn btn-primary">
                     <i class="bi bi-eye me-2"></i>Lihat Pengajuan On Progres
@@ -26,8 +26,8 @@
                 <div class="mb-3">
                     <i class="bi bi-journal-text text-success" style="font-size: 64px;"></i>
                 </div>
-                <h5 class="card-title">Histori Cuti</h5>
-                <p class="card-text text-muted">Lihat histori cuti yang sudah disetujui dengan detail pengurangan hak cuti.</p>
+                <h5 class="card-title">Laporan Cuti</h5>
+                <p class="card-text text-muted">Lihat Laporan cuti yang sudah disetujui dengan detail pengurangan hak cuti.</p>
                 <a href="{{ route('laporan.histori') }}" class="btn btn-success">
                     <i class="bi bi-eye me-2"></i>Lihat Laporan
                 </a>
@@ -64,7 +64,6 @@
                     <li>Filter berdasarkan status</li>
                     <li>Filter berdasarkan jenis cuti</li>
                     <li>Filter berdasarkan guru</li>
-                    <li>Export ke Excel/PDF (Coming Soon)</li>
                 </ul>
             </div>
             <div class="col-md-6">
@@ -74,6 +73,7 @@
                     <li>Detail pengurangan hak cuti</li>
                     <li>Filter berdasarkan tahun dan bulan</li>
                     <li>Filter berdasarkan guru</li>
+                    <li>Export ke PDF (Coming Soon)</li>
                 </ul>
             </div>
         </div>

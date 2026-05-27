@@ -7,99 +7,177 @@ use App\Models\PengajuanCuti;
 use App\Models\HistoriCuti;
 use App\Models\User;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LaporanController extends Controller
 {
-    // Halaman laporan
     public function index()
     {
-        return view('laporan.index');
+        $users = User::where('role', 'guru')->get();
+        return view('laporan.index', compact('users'));
     }
 
-    // Filter laporan pengajuan cuti
+    // ── Histori Pengajuan (semua status) ──────────────
     public function filterPengajuan(Request $request)
     {
-        $query = PengajuanCuti::with('user')
-        ->whereIn('status', ['pending','diproses']);
+        $query = PengajuanCuti::with('user');
 
-        // Filter berdasarkan tanggal
         if ($request->filled('tanggal_mulai')) {
-            $query->whereDate('tanggal_mulai', '>=', $request->tanggal_mulai);
+            $query->whereDate('created_at', '>=', $request->tanggal_mulai);
         }
-
         if ($request->filled('tanggal_selesai')) {
-            $query->whereDate('tanggal_selesai', '<=', $request->tanggal_selesai);
+            $query->whereDate('created_at', '<=', $request->tanggal_selesai);
         }
-
-        // Filter berdasarkan status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-
-        // Filter berdasarkan jenis cuti
         if ($request->filled('jenis_cuti')) {
             $query->where('jenis_cuti', $request->jenis_cuti);
         }
-
-        // Filter berdasarkan guru (untuk admin/kepala sekolah)
-        if ($request->filled('user_id') && !auth()->user()->isGuru()) {
+        if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
         $pengajuan = $query->latest()->paginate(20);
-        $users = User::where('role', 'Guru')->get();
-
-        $data = PengajuanCuti::whereIn('status', [
-            'pending',
-            'diverifikasi_admin'
-        ])->get();
+        $users     = User::where('role', 'guru')->get();
 
         return view('laporan.pengajuan', compact('pengajuan', 'users'));
     }
 
-    // Laporan histori cuti
+    // ── Laporan Cuti Disetujui ─────────────────────────
     public function histori(Request $request)
     {
         $query = HistoriCuti::with('user');
 
-        // Filter berdasarkan tahun
         if ($request->filled('tahun')) {
             $query->whereYear('tanggal_persetujuan', $request->tahun);
         }
-
-        // Filter berdasarkan bulan
         if ($request->filled('bulan')) {
             $query->whereMonth('tanggal_persetujuan', $request->bulan);
         }
-
-        // Filter berdasarkan guru
-        if ($request->filled('user_id') && !auth()->user()->isGuru()) {
+        if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        // Jika guru, hanya tampilkan miliknya
-        if (auth()->user()->isGuru()) {
-            $query->where('user_id', auth()->id());
-        }
-
         $histori = $query->latest('tanggal_persetujuan')->paginate(20);
-        $users = User::where('role', 'Guru')->get();
-
-        $data = PengajuanCuti::whereIn('status', [
-            'disetujui',
-            'ditolak'
-        ])->get();
+        $users   = User::where('role', 'guru')->get();
 
         return view('laporan.histori', compact('histori', 'users'));
     }
 
-    // Laporan sisa hak cuti semua guru
+    // ── Sisa Hak Cuti ──────────────────────────────────
     public function hakCuti()
     {
-        $guru = User::where('role', 'Guru')
-            ->orderBy('nama')
+        $guru = User::where('role', 'guru')->orderBy('nama')->get();
+        return view('laporan.hak-cuti', compact('guru'));
+    }
+
+    // ── Cetak PDF Bulanan (dari HistoriCuti) ───────────
+    public function cetakBulanan(Request $request)
+    {
+        $bulan = $request->bulan ?? date('m');
+        $tahun = $request->tahun ?? date('Y');
+
+        $data = HistoriCuti::with('user')
+            ->whereMonth('tanggal_mulai', $bulan)
+            ->whereYear('tanggal_mulai', $tahun)
+            ->latest('tanggal_mulai')
             ->get();
 
-        return view('laporan.hak-cuti', compact('guru'));
+        $pdf = Pdf::loadView('laporan.histori-pdf', [
+            'tipe'           => 'bulanan',
+            'data'           => $data,
+            'bulan'          => $bulan,
+            'tahun'          => $tahun,
+            'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
+            'nip_kepala'     => '197001051995031010',
+            'email'          => 'sdnkincang01@gmail.com',
+        ])->setPaper('a4', 'portrait');
+
+        $namaBulan = Carbon::create($tahun, $bulan)->translatedFormat('F');
+        return $pdf->download('Laporan_Cuti_Bulanan_' . $namaBulan . '_' . $tahun . '.pdf');
+    }
+
+    // ── Cetak PDF Tahunan (rekap per guru) ────────────
+    public function cetakTahunan(Request $request)
+    {
+        $tahun = $request->tahun ?? date('Y');
+
+        $data = User::where('role', 'guru')
+            ->orderBy('nama')
+            ->get()
+            ->map(function ($guru) use ($tahun) {
+                $cutiDiambil = HistoriCuti::where('user_id', $guru->id)
+                    ->whereYear('tanggal_mulai', $tahun)
+                    ->sum('jumlah_hari');
+
+                $jenisCuti = HistoriCuti::where('user_id', $guru->id)
+                    ->whereYear('tanggal_mulai', $tahun)
+                    ->pluck('jenis_cuti')
+                    ->unique()
+                    ->filter()
+                    ->implode(', ');
+
+                $adaDitangguhkan = PengajuanCuti::where('user_id', $guru->id)
+                    ->whereYear('created_at', $tahun)
+                    ->where('status', 'Ditangguhkan')
+                    ->exists();
+
+                $hakCuti = $guru->hak_cuti ?? 12;
+
+                return (object) [
+                    'nama'               => $guru->nama,
+                    'nip'                => $guru->nip,
+                    'jabatan'            => $guru->jabatan,
+                    'hak_cuti'           => $hakCuti,
+                    'cuti_diambil'       => $cutiDiambil,
+                    'sisa_cuti'          => max(0, $hakCuti - $cutiDiambil),
+                    'jenis_cuti_diambil' => $jenisCuti ?: '-',
+                    'keterangan'         => $adaDitangguhkan ? 'Ada pengajuan ditangguhkan' : '-',
+                ];
+            });
+
+        $pdf = Pdf::loadView('laporan.histori-pdf', [
+            'tipe'           => 'tahunan',
+            'data'           => $data,
+            'tahun'          => $tahun,
+            'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
+            'nip_kepala'     => '197001051995031010',
+            'email'          => 'sdnkincang01@gmail.com',
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('Laporan_Cuti_Tahunan_' . $tahun . '.pdf');
+    }
+
+    // ── Cetak PDF Histori Pengajuan (semua status) ────
+    public function cetakPengajuan(Request $request)
+    {
+        $bulan = $request->bulan ?? date('m');
+        $tahun = $request->tahun ?? date('Y');
+
+        $query = PengajuanCuti::with('user')
+            ->whereMonth('created_at', $bulan)
+            ->whereYear('created_at', $tahun);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        $data = $query->latest()->get();
+
+        $pdf = Pdf::loadView('laporan.pengajuan-pdf', [
+            'data'           => $data,
+            'bulan'          => $bulan,
+            'tahun'          => $tahun,
+            'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
+            'nip_kepala'     => '197001051995031010',
+            'email'          => 'sdnkincang01@gmail.com',
+        ])->setPaper('a4', 'portrait');
+
+        $namaBulan = Carbon::create($tahun, $bulan)->translatedFormat('F');
+        return $pdf->download('Histori_Pengajuan_' . $namaBulan . '_' . $tahun . '.pdf');
     }
 }

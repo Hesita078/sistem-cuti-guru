@@ -3,112 +3,110 @@
 @section('title', 'Login - Sistem Pengajuan Cuti Guru')
 
 @section('content')
-<style>
-    body {
-        background-image: url('{{ asset("images/school-background.jpg") }}');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }
-
-    /* Overlay gelap untuk meningkatkan keterbacaan */
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: -1;
-    }
-
-    .login-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-</style>
-
 <div class="login-card">
+
+    {{-- Header --}}
     <div class="login-header">
-        <i class="bi bi-calendar-check"></i>
+        <span class="header-icon">🏫</span>
         <h4>Sistem Pengajuan Cuti dan Izin Guru</h4>
-        <small>SD NEGERI KINCANG 01</small>
+        <small>SD Negeri Kincang 01</small>
+        <div class="header-divider"></div>
     </div>
 
-    <div class="login-body">
-        <h5 class="text-center mb-4">Silakan Login</h5>
+    {{-- Form Title --}}
+    <p class="login-title">Silakan Login</p>
 
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    {{-- Alert sukses --}}
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    {{-- Alert error --}}
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            {{ $errors->first() }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    {{-- Form --}}
+    <form method="POST" action="{{ route('login') }}">
+        @csrf
+
+        {{-- Email --}}
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-envelope"></i>
+                </span>
+                <input type="email"
+                       class="form-control @error('email') is-invalid @enderror"
+                       name="email"
+                       value="{{ old('email') }}"
+                       placeholder="Masukkan email Anda"
+                       required
+                       autofocus>
             </div>
-        @endif
+            @error('email')
+                <small class="text-danger">{{ $message }}</small>
+            @enderror
+        </div>
 
-        @if($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-circle me-2"></i>
-                {{ $errors->first() }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        {{-- Password --}}
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-lock"></i>
+                </span>
+                <input type="password"
+                       class="form-control @error('password') is-invalid @enderror"
+                       name="password"
+                       id="passwordInput"
+                       placeholder="Masukkan password Anda"
+                       required>
+                <button type="button" class="input-group-text btn-eye" onclick="togglePassword()" title="Tampilkan password">
+                    <i class="bi bi-eye" id="eyeIcon"></i>
+                </button>
             </div>
-        @endif
+            @error('password')
+                <small class="text-danger">{{ $message }}</small>
+            @enderror
+        </div>
 
-        <form method="POST" action="{{ route('login') }}">
-            @csrf
+        {{-- Ingat Saya --}}
+        <div class="mb-2 form-check">
+            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+            <label class="form-check-label" for="remember">Ingat Saya</label>
+        </div>
 
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white">
-                        <i class="bi bi-envelope"></i>
-                    </span>
-                    <input type="email"
-                           class="form-control @error('email') is-invalid @enderror"
-                           name="email"
-                           value="{{ old('email') }}"
-                           placeholder="Masukkan email Anda"
-                           required
-                           autofocus>
-                </div>
-                @error('email')
-                    <small class="text-danger">{{ $message }}</small>
-                @enderror
-            </div>
+        {{-- Tombol Login --}}
+        <button type="submit" class="btn btn-login">
+            <i class="bi bi-box-arrow-in-right me-2"></i>
+            Login
+        </button>
+    </form>
 
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white">
-                        <i class="bi bi-lock"></i>
-                    </span>
-                    <input type="password"
-                           class="form-control @error('password') is-invalid @enderror"
-                           name="password"
-                           placeholder="Masukkan password Anda"
-                           required>
-                </div>
-                @error('password')
-                    <small class="text-danger">{{ $message }}</small>
-                @enderror
-            </div>
-
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                <label class="form-check-label" for="remember">
-                    Ingat Saya
-                </label>
-            </div>
-
-            <button type="submit" class="btn btn-login">
-                <i class="bi bi-box-arrow-in-right me-2"></i>
-                Login
-            </button>
-        </form>
-    </div>
+    <p class="login-footer">Sistem Informasi &copy; {{ date('Y') }} SD Negeri Kincang 01</p>
 </div>
+
+@push('scripts')
+<script>
+    let pwVisible = false;
+    function togglePassword() {
+        pwVisible = !pwVisible;
+        const input = document.getElementById('passwordInput');
+        const icon  = document.getElementById('eyeIcon');
+        input.type = pwVisible ? 'text' : 'password';
+        icon.className = pwVisible ? 'bi bi-eye-slash' : 'bi bi-eye';
+    }
+</script>
+@endpush
+
 @endsection

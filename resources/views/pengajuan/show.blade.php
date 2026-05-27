@@ -10,17 +10,25 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Detail Pengajuan</h5>
-                    @if($pengajuan->status == 'Menunggu Verifikasi Admin')
+
+                    @php $status = $pengajuan->status; @endphp
+
+                    @if(str_contains($status, 'Menunggu Verifikasi') || $status === 'Menunggu Verifikasi Admin')
                         <span class="badge bg-warning text-dark">Menunggu Verifikasi</span>
-                    @elseif($pengajuan->status == 'Menunggu Persetujuan Kepala Sekolah')
+                    @elseif(str_contains($status, 'Menunggu Persetujuan') || $status === 'Menunggu Persetujuan Kepala Sekolah')
                         <span class="badge bg-primary">Menunggu Persetujuan</span>
-                    @elseif($pengajuan->status == 'Disetujui')
+                    @elseif($status === 'Disetujui' || str_contains($status, 'Disetujui'))
                         <span class="badge bg-success">Disetujui</span>
-                    @else
+                    @elseif($status === 'Ditangguhkan')
+                        <span class="badge bg-secondary">Ditangguhkan</span>
+                    @elseif($status === 'Ditolak Admin' || str_contains($status, 'Ditolak'))
                         <span class="badge bg-danger">Ditolak</span>
+                    @else
+                        <span class="badge bg-secondary">{{ $status }}</span>
                     @endif
                 </div>
             </div>
+
             <div class="card-body">
                 <!-- Info Pengajuan -->
                 <table class="table table-borderless">
@@ -78,7 +86,7 @@
                 <!-- Catatan Admin -->
                 @if($pengajuan->catatan_admin)
                     <hr>
-                    <div class="alert alert-{{ $pengajuan->status == 'Ditolak Admin' ? 'danger' : 'info' }}">
+                    <div class="alert alert-{{ str_contains($pengajuan->status, 'Ditolak Admin') ? 'danger' : 'info' }}">
                         <h6 class="mb-2"><strong><i class="bi bi-chat-left-text me-2"></i>Catatan Admin:</strong></h6>
                         <p class="mb-0">{{ $pengajuan->catatan_admin }}</p>
                         @if($pengajuan->tanggal_verifikasi_admin)
@@ -92,7 +100,7 @@
                 <!-- Catatan Kepala Sekolah -->
                 @if($pengajuan->catatan_kepala_sekolah)
                     <hr>
-                    <div class="alert alert-{{ $pengajuan->status == 'Ditolak' ? 'danger' : 'success' }}">
+                    <div class="alert alert-{{ str_contains($pengajuan->status, 'Ditolak') && !str_contains($pengajuan->status, 'Admin') ? 'danger' : 'success' }}">
                         <h6 class="mb-2"><strong><i class="bi bi-chat-left-text me-2"></i>Catatan Kepala Sekolah:</strong></h6>
                         <p class="mb-0">{{ $pengajuan->catatan_kepala_sekolah }}</p>
                         @if($pengajuan->tanggal_persetujuan)
@@ -103,51 +111,66 @@
                     </div>
                 @endif
 
-                <!-- Status Timeline -->
+                <!-- Timeline Status -->
                 <hr>
                 <h6 class="mb-3"><strong>Timeline Status:</strong></h6>
                 <div class="timeline">
+
+                    {{-- Step 1: Pengajuan Dibuat --}}
                     <div class="timeline-item">
                         <div class="timeline-marker bg-success"></div>
                         <div class="timeline-content">
-                            <strong>Pengajuan Dibuat</strong>
-                            <br>
+                            <strong>Pengajuan Dibuat</strong><br>
                             <small class="text-muted">{{ $pengajuan->created_at->format('d F Y H:i') }} WIB</small>
                         </div>
                     </div>
 
+                    {{-- Step 2: Verifikasi Admin --}}
                     @if($pengajuan->tanggal_verifikasi_admin)
                         <div class="timeline-item">
-                            <div class="timeline-marker bg-{{ $pengajuan->status == 'Ditolak Admin' ? 'danger' : 'info' }}"></div>
+                            <div class="timeline-marker bg-{{ str_contains($pengajuan->status, 'Ditolak Admin') ? 'danger' : 'info' }}"></div>
                             <div class="timeline-content">
-                                <strong>{{ $pengajuan->status == 'Ditolak Admin' ? 'Ditolak Admin' : 'Diverifikasi Admin' }}</strong>
-                                <br>
+                                <strong>{{ str_contains($pengajuan->status, 'Ditolak Admin') ? 'Ditolak Admin' : 'Diverifikasi Admin' }}</strong><br>
                                 <small class="text-muted">{{ $pengajuan->tanggal_verifikasi_admin->format('d F Y H:i') }} WIB</small>
                             </div>
                         </div>
                     @endif
 
+                    {{-- Step 3: Keputusan Kepala Sekolah --}}
                     @if($pengajuan->tanggal_persetujuan)
                         <div class="timeline-item">
-                            <div class="timeline-marker bg-{{ $pengajuan->status == 'Disetujui' ? 'success' : 'danger' }}"></div>
+                            <div class="timeline-marker bg-{{ str_contains($pengajuan->status, 'Disetujui') ? 'success' : 'danger' }}"></div>
                             <div class="timeline-content">
-                                <strong>{{ $pengajuan->status }}</strong>
-                                <br>
+                                <strong>
+                                    @if(str_contains($pengajuan->status, 'Disetujui'))
+                                        Disetujui Kepala Sekolah
+                                    @elseif($pengajuan->status === 'Ditangguhkan')
+                                        Ditangguhkan
+                                    @else
+                                        Ditolak Kepala Sekolah
+                                    @endif
+                                </strong><br>
                                 <small class="text-muted">{{ $pengajuan->tanggal_persetujuan->format('d F Y H:i') }} WIB</small>
                             </div>
                         </div>
                     @endif
-                </div>
 
+                </div>
             </div>
-            <div class="card-footer">
+
+            <div class="card-footer d-flex justify-content-between align-items-center">
                 <a href="{{ route('pengajuan.index') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left me-2"></i>Kembali
                 </a>
+
+                @if(str_contains($pengajuan->status, 'Disetujui'))
+                    <a href="{{ route('pengajuan.cetak-pdf', $pengajuan->id) }}"
+                       class="btn btn-danger"
+                       target="_blank">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>Cetak Formulir Cuti
+                    </a>
+                @endif
             </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('styles')
@@ -156,7 +179,6 @@
         position: relative;
         padding-left: 30px;
     }
-
     .timeline::before {
         content: '';
         position: absolute;
@@ -166,12 +188,10 @@
         width: 2px;
         background: #e0e0e0;
     }
-
     .timeline-item {
         position: relative;
         margin-bottom: 20px;
     }
-
     .timeline-marker {
         position: absolute;
         left: -26px;
@@ -180,7 +200,6 @@
         border-radius: 50%;
         border: 3px solid white;
     }
-
     .timeline-content {
         padding-left: 10px;
     }
