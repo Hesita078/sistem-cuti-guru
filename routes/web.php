@@ -9,13 +9,14 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\CutiBersamaController;
+use App\Http\Controllers\LeaveController;
+
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
 Route::middleware('guest')->group(function () {
-
     Route::get('/test-wa', [NotifikasiController::class, 'kirimWa']);
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -30,6 +31,15 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password');
 
     // ══════════════════════════════════════════════════
+    // VERIFIKASI ADMIN
+    // ══════════════════════════════════════════════════
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/verifikasi', [PengajuanCutiController::class, 'indexVerifikasi'])->name('verifikasi.index');
+        Route::post('/verifikasi/{id}', [PengajuanCutiController::class, 'verifikasi'])->name('verifikasi.proses');
+        Route::post('/verifikasi/{id}/tolak', [PengajuanCutiController::class, 'tolakVerifikasi'])->name('verifikasi.tolak');
+    });
+
+    // ══════════════════════════════════════════════════
     // GURU
     // ══════════════════════════════════════════════════
     Route::middleware('role:guru')->group(function () {
@@ -41,26 +51,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/pengajuan/{id}/edit', [PengajuanCutiController::class, 'edit'])->name('pengajuan.edit');
         Route::put('/pengajuan/{id}', [PengajuanCutiController::class, 'update'])->name('pengajuan.update');
     });
-
-    // ══════════════════════════════════════════════════
-    // ADMIN
-    // ══════════════════════════════════════════════════
-    Route::middleware('role:admin')->group(function () {
-        Route::get('/verifikasi', [PengajuanCutiController::class, 'indexVerifikasi'])->name('verifikasi.index');
-        Route::post('/verifikasi/{id}/setuju', [PengajuanCutiController::class, 'verifikasi'])->name('verifikasi.setuju');
-        Route::post('/verifikasi/{id}/tolak', [PengajuanCutiController::class, 'tolakVerifikasi'])->name('verifikasi.tolak');
-    });
-
-    // API untuk frontend (tidak perlu auth admin)
-    Route::get('/api/cuti-bersama', [CutiBersamaController::class, 'apiTanggal'])->name('api.cuti-bersama');
-
-    // Admin routes
-    Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/cuti-bersama', [CutiBersamaController::class, 'index'])->name('cuti-bersama.index');
-    Route::post('/cuti-bersama', [CutiBersamaController::class, 'store'])->name('cuti-bersama.store');
-    Route::put('/cuti-bersama/{cutiBersama}', [CutiBersamaController::class, 'update'])->name('cuti-bersama.update');
-    Route::delete('/cuti-bersama/{cutiBersama}', [CutiBersamaController::class, 'destroy'])->name('cuti-bersama.destroy');
-});
 
     // ══════════════════════════════════════════════════
     // KEPALA SEKOLAH
@@ -79,8 +69,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/laporan/pengajuan', [LaporanController::class, 'filterPengajuan'])->name('laporan.pengajuan');
         Route::get('/laporan/histori', [LaporanController::class, 'histori'])->name('laporan.histori');
         Route::get('/laporan/hak-cuti', [LaporanController::class, 'hakCuti'])->name('laporan.hak-cuti');
-
-        // Cetak PDF Laporan
         Route::get('/laporan/cetak-bulanan', [LaporanController::class, 'cetakBulanan'])->name('laporan.cetak-bulanan');
         Route::get('/laporan/cetak-tahunan', [LaporanController::class, 'cetakTahunan'])->name('laporan.cetak-tahunan');
         Route::get('/laporan/cetak-pengajuan', [LaporanController::class, 'cetakPengajuan'])->name('laporan.cetak-pengajuan');
@@ -90,12 +78,55 @@ Route::middleware('auth')->group(function () {
     // SHARED (semua role yang login)
     // ══════════════════════════════════════════════════
     Route::get('/pengajuan/{id}/detail', [PengajuanCutiController::class, 'show'])->name('pengajuan.detail');
-
-    // Cetak formulir PDF per pengajuan (guru, admin, kepala sekolah)
     Route::get('/pengajuan/{id}/cetak-pdf', [PengajuanCutiController::class, 'cetakPdf'])->name('pengajuan.cetak-pdf');
-    Route::post('/admin/guru/{id}/activate', [UserController::class, 'activate'])->name('admin.guru.activate');
-    Route::post('/admin/guru/{id}/reset-hak-cuti', [UserController::class, 'resetHakCuti'])->name('admin.guru.reset-hak-cuti');
-    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
-        Route::resource('guru', GuruController::class);
+
+    // ── Guru: pengajuan cuti (LeaveController) ──────────────
+    Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');
+    Route::get('/leaves/create', [LeaveController::class, 'create'])->name('leaves.create');
+    Route::post('/leaves', [LeaveController::class, 'store'])->name('leaves.store');
+    Route::get('/leaves/{leave}', [LeaveController::class, 'show'])->name('leaves.show');
+    Route::get('/leaves/preview/workdays', [LeaveController::class, 'previewWorkDays'])->name('leaves.preview');
+
+    // ══════════════════════════════════════════════════
+    // ADMIN — semua route admin di satu grup
+    // ══════════════════════════════════════════════════
+    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+
+        // Manajemen User (UserController)
+        Route::get('/guru', [UserController::class, 'index'])->name('guru.index');
+        Route::get('/guru/create', [UserController::class, 'create'])->name('guru.create');
+        Route::post('/guru', [UserController::class, 'store'])->name('guru.store');
+        Route::get('/guru/{id}', [UserController::class, 'show'])->name('guru.show');
+        Route::get('/guru/{id}/edit', [UserController::class, 'edit'])->name('guru.edit');
+        Route::put('/guru/{id}', [UserController::class, 'update'])->name('guru.update');
+        Route::delete('/guru/{id}', [UserController::class, 'destroy'])->name('guru.destroy');
+        Route::post('/guru/{id}/activate', [UserController::class, 'activate'])->name('guru.activate');
+        Route::post('/guru/{id}/reset-hak-cuti', [UserController::class, 'resetHakCuti'])->name('guru.reset-hak-cuti');
+
+        // Aktivasi & reset hak cuti guru
+        Route::post('/guru/{id}/activate', [UserController::class, 'activate'])->name('guru.activate');
+        Route::post('/guru/{id}/reset-hak-cuti', [UserController::class, 'resetHakCuti'])->name('guru.reset-hak-cuti');
+
+        // Data Guru (GuruController)
+        Route::get('/data-guru', [GuruController::class, 'dataGuru'])->name('data-guru.index');
+        Route::get('/data-guru/{id}', [GuruController::class, 'dataGuruShow'])->name('data-guru.show');
+        Route::get('/data-guru/{id}/edit', [GuruController::class, 'dataGuruEdit'])->name('data-guru.edit');
+        Route::put('/data-guru/{id}', [GuruController::class, 'dataGuruUpdate'])->name('data-guru.update');
+        Route::delete('/data-guru/{id}', [GuruController::class, 'dataGuruDestroy'])->name('data-guru.destroy');
+
+        // Cuti Bersama
+        Route::get('/cuti-bersama', [CutiBersamaController::class, 'index'])->name('cuti-bersama.index');
+        Route::post('/cuti-bersama', [CutiBersamaController::class, 'store'])->name('cuti-bersama.store');
+        Route::put('/cuti-bersama/{cutiBersama}', [CutiBersamaController::class, 'update'])->name('cuti-bersama.update');
+        Route::delete('/cuti-bersama/{cutiBersama}', [CutiBersamaController::class, 'destroy'])->name('cuti-bersama.destroy');
+        Route::post('/cuti-bersama/sync', [CutiBersamaController::class, 'sync'])->name('cuti-bersama.sync');
+
+        // Leaves (admin)
+        Route::get('/leaves', [LeaveController::class, 'adminIndex'])->name('leaves.index');
+        Route::patch('/leaves/{leave}/approve', [LeaveController::class, 'approve'])->name('leaves.approve');
+        Route::patch('/leaves/{leave}/reject', [LeaveController::class, 'reject'])->name('leaves.reject');
     });
+
 });
+
+Route::get('/api/cuti-bersama', [App\Http\Controllers\HolidayController::class, 'index']);

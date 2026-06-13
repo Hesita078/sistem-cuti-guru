@@ -39,7 +39,7 @@ class LaporanController extends Controller
         }
 
         $pengajuan = $query->latest()->paginate(20);
-        $users     = User::where('role', 'guru')->get();
+        $users = User::where('role', 'guru')->get();
 
         return view('laporan.pengajuan', compact('pengajuan', 'users'));
     }
@@ -59,8 +59,8 @@ class LaporanController extends Controller
             $query->where('user_id', $request->user_id);
         }
 
-        $histori = $query->latest('tanggal_persetujuan')->paginate(20);
-        $users   = User::where('role', 'guru')->get();
+        $histori = $query->latest('tanggal_persetujuan')->paginate(5)->withQueryString();
+        $users = User::where('role', 'guru')->get();
 
         return view('laporan.histori', compact('histori', 'users'));
     }
@@ -85,13 +85,13 @@ class LaporanController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('laporan.histori-pdf', [
-            'tipe'           => 'bulanan',
-            'data'           => $data,
-            'bulan'          => $bulan,
-            'tahun'          => $tahun,
+            'tipe' => 'bulanan',
+            'data' => $data,
+            'bulan' => $bulan,
+            'tahun' => $tahun,
             'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
-            'nip_kepala'     => '197001051995031010',
-            'email'          => 'sdnkincang01@gmail.com',
+            'nip_kepala' => '197001051995031010',
+            'email' => 'sdnkincang01@gmail.com',
         ])->setPaper('a4', 'portrait');
 
         $namaBulan = Carbon::create($tahun, $bulan)->translatedFormat('F');
@@ -126,24 +126,24 @@ class LaporanController extends Controller
                 $hakCuti = $guru->hak_cuti ?? 12;
 
                 return (object) [
-                    'nama'               => $guru->nama,
-                    'nip'                => $guru->nip,
-                    'jabatan'            => $guru->jabatan,
-                    'hak_cuti'           => $hakCuti,
-                    'cuti_diambil'       => $cutiDiambil,
-                    'sisa_cuti'          => max(0, $hakCuti - $cutiDiambil),
+                    'nama' => $guru->nama,
+                    'nip' => $guru->nip,
+                    'jabatan' => $guru->jabatan,
+                    'hak_cuti' => $hakCuti,
+                    'cuti_diambil' => $cutiDiambil,
+                    'sisa_cuti' => max(0, $hakCuti - $cutiDiambil),
                     'jenis_cuti_diambil' => $jenisCuti ?: '-',
-                    'keterangan'         => $adaDitangguhkan ? 'Ada pengajuan ditangguhkan' : '-',
+                    'keterangan' => $adaDitangguhkan ? 'Ada pengajuan ditangguhkan' : '-',
                 ];
             });
 
         $pdf = Pdf::loadView('laporan.histori-pdf', [
-            'tipe'           => 'tahunan',
-            'data'           => $data,
-            'tahun'          => $tahun,
+            'tipe' => 'tahunan',
+            'data' => $data,
+            'tahun' => $tahun,
             'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
-            'nip_kepala'     => '197001051995031010',
-            'email'          => 'sdnkincang01@gmail.com',
+            'nip_kepala' => '197001051995031010',
+            'email' => 'sdnkincang01@gmail.com',
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('Laporan_Cuti_Tahunan_' . $tahun . '.pdf');
@@ -167,14 +167,15 @@ class LaporanController extends Controller
         }
 
         $data = $query->latest()->get();
+        $namaBulan = Carbon::create($tahun, $bulan)->translatedFormat('F');
 
         $pdf = Pdf::loadView('laporan.pengajuan-pdf', [
-            'data'           => $data,
-            'bulan'          => $bulan,
-            'tahun'          => $tahun,
+            'pengajuan' => $data,
+            'bulanNama' => $namaBulan,
+            'tahun' => $tahun,
             'kepala_sekolah' => 'Budi Santoso, S.Pd., M.Pd',
-            'nip_kepala'     => '197001051995031010',
-            'email'          => 'sdnkincang01@gmail.com',
+            'nip_kepala' => '197001051995031010',
+            'email' => 'sdnkincang01@gmail.com',
         ])->setPaper('a4', 'portrait');
 
         $namaBulan = Carbon::create($tahun, $bulan)->translatedFormat('F');

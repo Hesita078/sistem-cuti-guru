@@ -1,155 +1,233 @@
 @extends('layouts.app')
 
-@section('title', 'Kelola User')
-@section('page-title', 'Kelola Data User')
-@section('page-subtitle', 'Tambah, Edit, dan Hapus Data User')
+@section('title', 'Manajemen User')
+@section('page-title', 'Manajemen User')
 
 @section('content')
-<div class="row mb-3">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center">
+
+<div class="pci-card">
+
+    <div class="pci-header">
+        <div class="pci-header-left">
+            <div class="pci-header-icon"><i class="bi bi-people-fill"></i></div>
             <div>
-                <h5 class="mb-0">Daftar User</h5>
+                <div class="pci-header-title">Manajemen User</div>
+                <div class="pci-header-sub">Kelola akun dan akses user sistem</div>
             </div>
-            <a href="{{ route('admin.guru.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Tambah User
-            </a>
+        </div>
+        <a href="{{ route('admin.guru.create') }}" class="pci-btn-primary">
+            <i class="bi bi-plus-circle"></i> Tambah User
+        </a>
+    </div>
+
+    <div class="pci-search-wrap">
+        <form method="GET" action="{{ route('admin.guru.index') }}">
+            <div class="pci-search-row">
+                <div class="pci-input-wrap" style="flex:1; min-width:200px;">
+                    <i class="bi bi-search pci-input-icon"></i>
+                    <input type="text" name="search" value="{{ request('search') }}"
+                           placeholder="Cari nama atau email…" class="pci-input">
+                </div>
+                <div class="pci-input-wrap" style="min-width:160px;">
+                    <i class="bi bi-person-badge pci-input-icon"></i>
+                    <select name="role" class="pci-input pci-select">
+                        <option value="">Semua Role</option>
+                        <option value="guru"           {{ request('role') == 'guru'           ? 'selected' : '' }}>Guru</option>
+                        <option value="admin"          {{ request('role') == 'admin'          ? 'selected' : '' }}>Admin</option>
+                        <option value="kepala_sekolah" {{ request('role') == 'kepala_sekolah' ? 'selected' : '' }}>Kepala Sekolah</option>
+                    </select>
+                </div>
+                <div class="pci-input-wrap" style="min-width:140px;">
+                    <i class="bi bi-toggle-on pci-input-icon"></i>
+                    <select name="status" class="pci-input pci-select">
+                        <option value="">Semua Status</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Aktif</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Nonaktif</option>
+                    </select>
+                </div>
+                <button type="submit" class="pci-btn-primary"><i class="bi bi-search"></i> Cari</button>
+                @if(request('search') || request('role') || (request('status') !== null && request('status') !== ''))
+                <a href="{{ route('admin.guru.index') }}" class="pci-btn-reset"><i class="bi bi-x-lg"></i> Reset</a>
+                @endif
+            </div>
+        </form>
+    </div>
+
+    <div class="pci-table-wrap">
+        <table class="pci-table">
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th style="text-align:center;">Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($guru as $g)
+                <tr>
+                    <td><div class="pci-nama">{{ $g->nama }}</div></td>
+                    <td style="font-size:13px; color:#5a6090;">{{ $g->email }}</td>
+                    <td>
+                        @if($g->role == 'admin')
+                            <span class="pci-badge pci-badge-danger">Admin</span>
+                        @elseif($g->role == 'kepala_sekolah')
+                            <span class="pci-badge pci-badge-secondary">Kepala Sekolah</span>
+                        @else
+                            <span class="pci-badge pci-badge-blue">Guru</span>
+                        @endif
+                    </td>
+                    <td style="text-align:center;">
+                        @if($g->is_active)
+                            <span class="pci-badge pci-badge-success">Aktif</span>
+                        @else
+                            <span class="pci-badge pci-badge-secondary">Nonaktif</span>
+                        @endif
+                    </td>
+                    <td>
+                        <div class="pci-action-group">
+                        <a href="{{ route('admin.guru.edit', $g->id) }}"
+                            class="pci-action-btn pci-action-edit" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+
+                        {{-- Toggle Aktif/Nonaktif --}}
+                        <form method="POST" action="{{ route('admin.guru.activate', $g->id) }}" style="display:inline;">
+                            @csrf
+                            <button type="submit"
+                                class="pci-action-btn {{ $g->is_active ? 'pci-action-deactivate' : 'pci-action-activate' }}"
+                                title="{{ $g->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
+                                <i class="bi bi-{{ $g->is_active ? 'toggle-on' : 'toggle-off' }}"></i>
+                            </button>
+                        </form>
+
+                        {{-- Hapus --}}
+                        <button type="button"
+                            class="pci-action-btn pci-action-delete"
+                            title="Hapus User"
+                            onclick="confirmHapus('{{ route('admin.guru.destroy', $g->id) }}', '{{ addslashes($g->nama) }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="5">
+                        <div class="pci-empty">
+                            <div class="pci-empty-icon"><i class="bi bi-inbox"></i></div>
+                            <div class="pci-empty-title">Belum Ada Data User</div>
+                            <div class="pci-empty-sub">Tambahkan user baru untuk memulai.</div>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pci-pagination">{{ $guru->links() }}</div>
+
+</div>
+
+{{-- Modal Konfirmasi Hapus --}}
+<div id="hapusModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="closeHapus()" style="position:absolute; inset:0; background:rgba(20,25,60,.45); backdrop-filter:blur(3px);"></div>
+    <div style="position:relative; background:#fff; border-radius:18px; padding:32px 28px; width:100%; max-width:380px; margin:16px; box-shadow:0 8px 40px rgba(20,25,60,.18); text-align:center; animation:modalIn .2s ease;">
+        <div style="width:56px; height:56px; border-radius:16px; background:#fce8ea; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+            <i class="bi bi-trash" style="font-size:24px; color:#c45f6e;"></i>
+        </div>
+        <div style="font-size:16px; font-weight:700; color:#1a1f3d; margin-bottom:8px;">Hapus User?</div>
+        <div style="font-size:13px; color:#7a80a8; margin-bottom:24px;">
+            Data <strong id="hapusNama"></strong> akan dihapus permanen dan tidak dapat dikembalikan.
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeHapus()"
+                style="flex:1; padding:10px; border-radius:10px; border:1px solid #dce0f0; background:#f7f9ff; color:#5a6090; font-size:13.5px; font-weight:600; cursor:pointer;">
+                Batal
+            </button>
+            <form id="hapusForm" method="POST" style="flex:1;">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                    style="width:100%; padding:10px; border-radius:10px; border:none; background:#c45f6e; color:#fff; font-size:13.5px; font-weight:600; cursor:pointer;">
+                    Ya, Hapus
+                </button>
+            </form>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No</th>
-                                <th>NIP</th>
-                                <th>Nama</th>
-                                <th>Email</th>
-                                <th>Role</th> <!-- ✅ TAMBAHAN -->
-                                <th>Telepon</th>
-                                <th>Hak Cuti</th>
-                                <th>Sisa Cuti</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($guru as $index => $g)
-                            <tr>
-                                <td>{{ $guru->firstItem() + $index }}</td>
-                                <td><strong>{{ $g->nip }}</strong></td>
-                                <td>{{ $g->nama }}</td>
-                                <td>{{ $g->email }}</td>
+<form id="hapus-form" method="POST" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
 
-                                <!-- ✅ ROLE -->
-                                <td>
-                                    @if($g->role == 'admin')
-                                        <span class="badge bg-danger">Admin</span>
-                                    @elseif($g->role == 'kepala_sekolah')
-                                        <span class="badge bg-dark">Kepala Sekolah</span>
-                                    @else
-                                        <span class="badge bg-primary">Guru</span>
-                                    @endif
-                                </td>
+<style>
+@keyframes modalIn { from { opacity:0; transform:scale(.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.pci-card { background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(30,40,90,.08); border:1px solid #dce0f0; overflow:hidden; }
+.pci-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 28px; border-bottom:1px solid #eef0f8; flex-wrap:wrap; }
+.pci-header-left { display:flex; align-items:center; gap:14px; }
+.pci-header-icon { width:42px; height:42px; border-radius:12px; background:#eef1fb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pci-header-icon i { font-size:18px; color:#4a5fc1; }
+.pci-header-title { font-size:15px; font-weight:700; color:#1a1f3d; }
+.pci-header-sub { font-size:12px; color:#7a80a8; margin-top:1px; }
+.pci-btn-primary { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:#4a5fc1; color:#fff; border:none; border-radius:10px; font-size:13.5px; font-weight:600; cursor:pointer; text-decoration:none; transition:background .2s,transform .15s; white-space:nowrap; }
+.pci-btn-primary:hover { background:#5a6fd6; transform:translateY(-1px); color:#fff; }
+.pci-btn-reset { display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:#f7f9ff; color:#5a6090; border:1px solid #dce0f0; border-radius:10px; font-size:13.5px; font-weight:600; cursor:pointer; text-decoration:none; transition:background .2s; white-space:nowrap; }
+.pci-btn-reset:hover { background:#eef0f8; color:#1a1f3d; }
+.pci-search-wrap { padding:18px 28px; border-bottom:1px solid #eef0f8; background:#fafbff; }
+.pci-search-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.pci-input-wrap { position:relative; display:flex; align-items:center; }
+.pci-input-icon { position:absolute; left:12px; font-size:14px; color:#9ba3cc; pointer-events:none; }
+.pci-input { width:100%; background:#f7f9ff; border:1px solid #dce0f0; border-radius:10px; padding:9px 12px 9px 36px; font-size:13px; color:#1a1f3d; outline:none; font-family:inherit; transition:border-color .2s,box-shadow .2s; }
+.pci-input:focus { border-color:#4a5fc1; box-shadow:0 0 0 3px rgba(74,95,193,.10); }
+.pci-input::placeholder { color:#c0c5de; }
+.pci-select { cursor:pointer; }
+.pci-table-wrap { overflow-x:auto; }
+.pci-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.pci-table thead th { background:#f7f9ff; padding:11px 16px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#9ba3cc; border-bottom:1.5px solid #eef0f8; white-space:nowrap; text-align:left; }
+.pci-table tbody td { padding:13px 16px; border-bottom:1px solid #f0f2fa; color:#424770; vertical-align:middle; }
+.pci-table tbody tr:last-child td { border-bottom:none; }
+.pci-table tbody tr:hover td { background:#f7f9ff; }
+.pci-nama { font-weight:600; color:#1a1f3d; font-size:13.5px; }
+.pci-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+.pci-badge-blue { background:#eef1fb; color:#4a5fc1; }
+.pci-badge-success { background:#d4f0e2; color:#4a9e72; }
+.pci-badge-danger { background:#fad5da; color:#c45f6e; }
+.pci-badge-secondary { background:#edeff8; color:#7a80a8; }
+.pci-action-group { display:flex; gap:6px; align-items:center; }
+.pci-action-btn { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; border:1px solid; cursor:pointer; background:transparent; font-size:14px; transition:all .18s; text-decoration:none; }
+.pci-action-view { border-color:#c5d7fa; color:#4a5fc1; }
+.pci-action-view:hover { background:#4a5fc1; color:#fff; border-color:#4a5fc1; }
+.pci-action-edit { border-color:#fce3ce; color:#c97a50; }
+.pci-action-edit:hover { background:#c97a50; color:#fff; border-color:#c97a50; }
+.pci-action-delete { border-color:#fad5da; color:#c45f6e; }
+.pci-action-delete:hover { background:#c45f6e; color:#fff; border-color:#c45f6e; }
+.pci-pagination { padding:16px 28px; border-top:1px solid #eef0f8; }
+.pci-empty { display:flex; flex-direction:column; align-items:center; padding:3rem 2rem; text-align:center; }
+.pci-empty-icon { width:64px; height:64px; border-radius:16px; background:#eef1fb; display:flex; align-items:center; justify-content:center; margin-bottom:1rem; }
+.pci-empty-icon i { font-size:28px; color:#9ba3cc; }
+.pci-empty-title { font-size:15px; font-weight:700; color:#1a1f3d; margin-bottom:4px; }
+.pci-empty-sub { font-size:13px; color:#7a80a8; }
+.pci-action-activate { border-color:#d4f0e2; color:#4a9e72; }
+.pci-action-activate:hover { background:#4a9e72; color:#fff; border-color:#4a9e72; }
+.pci-action-deactivate { border-color:#fce3ce; color:#c97a50; }
+.pci-action-deactivate:hover { background:#c97a50; color:#fff; border-color:#c97a50; }
+</style>
 
-                                <td>{{ $g->no_telp ?? '-' }}</td>
-
-                                <!-- ✅ HAK CUTI -->
-                                <td>
-                                    @if($g->role == 'guru')
-                                        <span class="badge bg-info">{{ $g->hak_cuti_tahunan }} hari</span>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-
-                                <!-- ✅ SISA CUTI -->
-                                <td>
-                                    @if($g->role == 'guru')
-                                        @if($g->hak_cuti == 0)
-                                            <span class="badge bg-danger">{{ $g->sisa_hak_cuti }} hari</span>
-                                        @elseif($g->hak_cuti <= 3)
-                                            <span class="badge bg-warning">{{ $g->sisa_hak_cuti }} hari</span>
-                                        @else
-                                            <span class="badge bg-success">{{ $g->sisa_hak_cuti }} hari</span>
-                                        @endif
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-
-                                <!-- STATUS -->
-                                <td>
-                                    @if($g->is_active)
-                                        <span class="badge bg-success">Aktif</span>
-                                    @else
-                                        <span class="badge bg-secondary">Nonaktif</span>
-                                    @endif
-                                </td>
-
-                                <!-- AKSI -->
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a href="{{ route('admin.guru.show', $g->id) }}"
-                                           class="btn btn-sm btn-info"
-                                           title="Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-
-                                        <a href="{{ route('admin.guru.edit', $g->id) }}"
-                                           class="btn btn-sm btn-warning"
-                                           title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-
-                                        @if($g->is_active)
-                                        <form action="{{ route('admin.guru.destroy', $g->id) }}"
-                                              method="POST"
-                                              onsubmit="return confirm('Nonaktifkan akun ini?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-danger"
-                                                    title="Nonaktifkan">
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
-                                        </form>
-                                        @else
-                                        <form action="{{ route('admin.guru.activate', $g->id) }}"
-                                              method="POST">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-success"
-                                                    title="Aktifkan">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
-                                        </form>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="10" class="text-center py-4">
-                                    <i class="bi bi-inbox fs-1 text-muted"></i>
-                                    <p class="text-muted">Belum ada data user</p>
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mt-3">
-                    {{ $guru->links() }}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
+
+@push('scripts')
+<script>
+function confirmHapus(url, nama) {
+    document.getElementById('hapusForm').action = url;
+    document.getElementById('hapusNama').textContent = nama;
+    document.getElementById('hapusModal').style.display = 'flex';
+}
+function closeHapus() {
+    document.getElementById('hapusModal').style.display = 'none';
+}
+</script>
+@endpush

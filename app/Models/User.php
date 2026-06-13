@@ -15,10 +15,14 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'hak_cuti',
         'nip',
+        'jabatan',
         'no_telp',
         'alamat',
+        // 'telepon',
+        // 'hak_cuti_tahunan',
+        'hak_cuti',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -28,28 +32,27 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed', // Ini penting!
+        'password'          => 'hashed',
+        'is_active'         => 'boolean',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    // ============================================
+    // RELATIONSHIPS
+    // ============================================
 
-    // Relationship: User memiliki banyak pengajuan cuti
     public function pengajuanCuti()
     {
         return $this->hasMany(PengajuanCuti::class);
     }
 
-    // Relationship: User memiliki banyak histori cuti
     public function historiCuti()
     {
         return $this->hasMany(HistoriCuti::class);
     }
+
+    // ============================================
+    // ROLE HELPERS
+    // ============================================
 
     public function isKepalaSekolah()
     {
@@ -64,5 +67,16 @@ class User extends Authenticatable
     public function isGuru()
     {
         return strtolower($this->role) === 'guru';
+    }
+
+    // ============================================
+    // HAK CUTI
+    // ============================================
+
+    public function resetHakCuti()
+    {
+        $this->update([
+            'hak_cuti' => 12, // reset ke default 12 hari
+        ]);
     }
 }

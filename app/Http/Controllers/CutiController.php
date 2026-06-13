@@ -23,11 +23,11 @@ public function store(Request $request)
         'status' => 'Menunggu Verifikasi',
     ]);
 
+    // Panggil NotifikasiController
+$notifikasi = new \App\Http\Controllers\NotifikasiController();
+$notifikasi->kirimWa('62895399191838', 'pengajuan_baru');
     // Kirim notifikasi WA
-    FonnteService::send(
-        '62895399191838',
-        '📢 Pengajuan cuti baru (' . $cuti->kode_pengajuan . ') telah masuk.'
-    );
+    FonnteService::send(env('FONNTE_TARGET'), '📢 Pengajuan cuti baru...');
 
     return redirect()->back()->with('success', 'Pengajuan cuti berhasil dikirim.');
 }

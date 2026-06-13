@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CutiBersama;
 use Illuminate\Http\Request;
+use App\Services\SyncCutiBersamaService;
 
 class CutiBersamaController extends Controller
 {
@@ -99,5 +100,32 @@ class CutiBersamaController extends Controller
             ]);
 
         return response()->json($tanggal);
+    }
+
+
+
+
+
+
+
+
+
+    public function sync(Request $request, SyncCutiBersamaService $service)
+    {
+        $tahun = (int) $request->get('tahun', date('Y'));
+
+    try {
+        $result = $service->sync($tahun);
+
+        return redirect()
+            ->route('admin.cuti-bersama.index', ['tahun' => $tahun])
+            ->with(
+                'success',
+                "Sync berhasil. {$result['inserted']} data ditambahkan."
+            );
+
+        } catch (\Exception $e) {
+        return back()->with('error', $e->getMessage());
+        }
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\PengajuanCuti;
 use App\Models\User;
 use App\Models\HistoriCuti;
@@ -13,33 +12,39 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // Data berbeda berdasarkan role
-        if ($user->isKepalaSekolah()) {
+        if ($user->role === 'kepala_sekolah') {
             return $this->dashboardKepalaSekolah();
-        } elseif ($user->isAdmin()) {
-            return $this->dashboardAdmin();
-        } else {
-            return $this->dashboardGuru();
         }
+
+        if ($user->role === 'admin') {
+            return $this->dashboardAdmin();
+        }
+
+        return $this->dashboardGuru();
     }
 
-    // Dashboard untuk Kepala Sekolah
+    /**
+     * Dashboard Kepala Sekolah
+     */
     private function dashboardKepalaSekolah()
     {
-        $data = [
-            'totalGuru' => User::where('role', 'Guru')->count(),
+        return view('dashboard.kepala-sekolah', [
 
-            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Persetujuan Kepala Sekolah')
-                ->count(),
+            'totalGuru' => User::where('role', 'guru')->count(),
 
-            // DIPERBAIKI
-            'pengajuanDisetujui' => PengajuanCuti::where('status', 'Disetujui Kepala Sekolah')
-                ->count(),
+            'pengajuanMenunggu' => PengajuanCuti::where(
+                'status',
+                'Menunggu Persetujuan Kepala Sekolah'
+            )->count(),
 
-            // DIPERBAIKI
+            'pengajuanDisetujui' => PengajuanCuti::where(
+                'status',
+                'Disetujui Kepala Sekolah'
+            )->count(),
+
             'pengajuanDitolak' => PengajuanCuti::whereIn('status', [
-                'Ditolak Kepala Sekolah',
-                'Ditolak Admin'
+                'Ditolak Admin',
+                'Ditolak Kepala Sekolah'
             ])->count(),
 
             'pengajuanTerbaru' => PengajuanCuti::with('user')
@@ -47,47 +52,56 @@ class DashboardController extends Controller
                 ->latest()
                 ->take(5)
                 ->get(),
-        ];
-
-        return view('dashboard.kepala-sekolah', $data);
+        ]);
     }
 
-    // Dashboard untuk Admin
+    /**
+     * Dashboard Admin
+     */
     private function dashboardAdmin()
     {
-        $data = [
-            'totalGuru' => User::where('role', 'Guru')->count(),
+        return view('dashboard.admin', [
 
-            'pengajuanMenunggu' => PengajuanCuti::where('status', 'Menunggu Verifikasi Admin')
-                ->count(),
+            'totalGuru' => User::where('role', 'guru')->count(),
 
-            // DIPERBAIKI
-            'pengajuanDiverifikasi' => PengajuanCuti::where('status', 'Menunggu Persetujuan Kepala Sekolah')
-                ->count(),
+            'pengajuanMenunggu' => PengajuanCuti::where(
+                'status',
+                'Menunggu Verifikasi Admin'
+            )->count(),
 
-            'pengajuanDitolak' => PengajuanCuti::where('status', 'Ditolak Admin')
-                ->count(),
+            'pengajuanDiverifikasi' => PengajuanCuti::where(
+                'status',
+                'Menunggu Persetujuan Kepala Sekolah'
+            )->count(),
+
+            'pengajuanDitolak' => PengajuanCuti::where(
+                'status',
+                'Ditolak Admin'
+            )->count(),
 
             'pengajuanTerbaru' => PengajuanCuti::with('user')
                 ->where('status', 'Menunggu Verifikasi Admin')
                 ->latest()
                 ->take(5)
                 ->get(),
-        ];
-
-        return view('dashboard.admin', $data);
+        ]);
     }
 
-    // Dashboard untuk Guru
+    /**
+     * Dashboard Guru
+     */
     private function dashboardGuru()
     {
         $user = auth()->user();
 
-        $data = [
+        return view('dashboard.guru', [
+
             'hakCuti' => $user->hak_cuti,
 
-            'totalPengajuan' => PengajuanCuti::where('user_id', $user->id)
-                ->count(),
+            'totalPengajuan' => PengajuanCuti::where(
+                'user_id',
+                $user->id
+            )->count(),
 
             'pengajuanMenunggu' => PengajuanCuti::where('user_id', $user->id)
                 ->whereIn('status', [
@@ -96,30 +110,32 @@ class DashboardController extends Controller
                 ])
                 ->count(),
 
-            // DIPERBAIKI
             'pengajuanDisetujui' => PengajuanCuti::where('user_id', $user->id)
                 ->where('status', 'Disetujui Kepala Sekolah')
                 ->count(),
 
-            // DIPERBAIKI
             'pengajuanDitolak' => PengajuanCuti::where('user_id', $user->id)
                 ->whereIn('status', [
-                    'Ditolak Kepala Sekolah',
-                    'Ditolak Admin'
+                    'Ditolak Admin',
+                    'Ditolak Kepala Sekolah'
                 ])
                 ->count(),
 
-            'pengajuanTerbaru' => PengajuanCuti::where('user_id', $user->id)
+            'pengajuanTerbaru' => PengajuanCuti::where(
+                'user_id',
+                $user->id
+            )
                 ->latest()
                 ->take(5)
                 ->get(),
 
-            'historiCuti' => HistoriCuti::where('user_id', $user->id)
+            'historiCuti' => HistoriCuti::where(
+                'user_id',
+                $user->id
+            )
                 ->latest()
                 ->take(5)
                 ->get(),
-        ];
-
-        return view('dashboard.guru', $data);
+        ]);
     }
 }
