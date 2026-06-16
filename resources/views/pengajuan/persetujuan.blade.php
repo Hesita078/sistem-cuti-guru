@@ -74,8 +74,8 @@
                         </td>
 
                         <td>
-                            <span class="badge {{ $item->user->hak_cuti >= $item->jumlah_hari ? 'bg-success' : 'bg-danger' }}">
-                                {{ $item->user->hak_cuti }} hari
+                            <span class="badge {{ $item->user->hak_cuti_tahunan >= $item->jumlah_hari ? 'bg-success' : 'bg-danger' }}">
+                                {{ $item->user->hak_cuti_tahunan }} hari
                             </span>
                         </td>
 
@@ -134,14 +134,14 @@
                                             </p>
 
                                             <p><strong>Sisa Hak Cuti:</strong><br>
-                                                <span class="text-{{ $item->user->hak_cuti >= $item->jumlah_hari ? 'success' : 'danger' }}">
-                                                    {{ $item->user->hak_cuti }} hari
+                                                <span class="text-{{ $item->user->hak_cuti_tahunan >= $item->jumlah_hari ? 'success' : 'danger' }}">
+                                                    {{ $item->user->hak_cuti_tahunan }} hari
                                                 </span>
                                             </p>
 
                                             <p><strong>Setelah Disetujui:</strong><br>
                                                 <span class="fw-semibold">
-                                                    {{ $item->user->hak_cuti - $item->jumlah_hari }} hari
+                                                    {{ $item->user->hak_cuti_tahunan - $item->jumlah_hari }} hari
                                                 </span>
                                             </p>
                                         </div>
@@ -167,7 +167,7 @@
                                         </div>
                                     @endif
 
-                                    @if($item->user->hak_cuti < $item->jumlah_hari)
+                                    @if($item->user->hak_cuti_tahunan < $item->jumlah_hari)
                                         <div class="alert alert-warning mt-3">
                                             Hak cuti tidak mencukupi!
                                         </div>

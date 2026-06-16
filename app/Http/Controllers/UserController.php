@@ -113,7 +113,7 @@ class UserController extends Controller
 
     // VALIDASI KHUSUS GURU
     if ($request->role == 'guru') {
-        $validated['hak_cuti'] = $request->hak_cuti ?? $user->hak_cuti ?? 12;
+        $validated['hak_cuti'] = $request->hak_cuti_tahunan ?? $user->hak_cuti_tahunan ?? 12;
     } else {
         $validated['hak_cuti'] = 0;
     }

@@ -96,7 +96,7 @@ class DashboardController extends Controller
 
         return view('dashboard.guru', [
 
-            'hakCuti' => $user->hak_cuti,
+            'hakCuti' => $user->hak_cuti_tahunan,
 
             'totalPengajuan' => PengajuanCuti::where(
                 'user_id',

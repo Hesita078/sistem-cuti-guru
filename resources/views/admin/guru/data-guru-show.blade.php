@@ -65,7 +65,7 @@
                         </li>
                         <li>
                             <span class="text-muted">Hak Cuti</span><br>
-                            <strong class="text-primary">{{ $guru->hak_cuti }} hari / tahun</strong>
+                            <strong class="text-primary">{{ $guru->hak_cuti_tahunan }} hari / tahun</strong>
                         </li>
                     </ul>
                 </div>

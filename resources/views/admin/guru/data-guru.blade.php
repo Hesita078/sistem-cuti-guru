@@ -63,7 +63,7 @@
                         @endif
                     </td>
                     <td style="text-align:center;">
-                        <span style="font-weight:700; color:#4a5fc1;">{{ $g->hak_cuti ?? 0 }} hari</span>
+                        <span style="font-weight:700; color:#4a5fc1;">{{ $g->hak_cuti_tahunan ?? 0 }} hari</span>
                     </td>
                     <td style="text-align:center;">
                         @if($g->is_active)

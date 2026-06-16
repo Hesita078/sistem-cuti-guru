@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use App\Models\PengajuanCuti;
 use App\Models\HistoriCuti;
 
-
 class GuruController extends Controller
 {
     public function index(Request $request)
@@ -43,7 +42,7 @@ class GuruController extends Controller
         if ($request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('nama', 'like', '%'.$request->search.'%')
-                ->orWhere('nip', 'like', '%'.$request->search.'%');
+                  ->orWhere('nip', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -71,22 +70,30 @@ class GuruController extends Controller
         $guru = User::findOrFail($id);
 
         $request->validate([
-            'nip'     => 'required|unique:users,nip,' . $id,
-            'nama'    => 'required|string|max:255',
-            'jabatan' => 'nullable|string|max:255',
-            'no_telp' => 'nullable|string|max:20',
-            'alamat'  => 'nullable|string',
-            'hak_cuti'=> 'required|integer|min:0',
+            'nip'                  => 'required|unique:users,nip,' . $id,
+            'nama'                 => 'required|string|max:255',
+            'jabatan'              => 'nullable|string|max:255',
+            'no_telp'              => 'nullable|string|max:20',
+            'alamat'               => 'nullable|string',
+            'hak_cuti_tahunan'     => 'required|integer|min:0',
+            'hak_cuti_sakit'       => 'required|integer|min:0',
+            'hak_cuti_melahirkan'  => 'required|integer|min:0',
+            'hak_cuti_haji'        => 'required|integer|min:0',
+            'hak_cuti_penting'     => 'required|integer|min:0',
         ]);
 
         $guru->update([
-            'nip'      => $request->nip,
-            'nama'     => $request->nama,
-            'jabatan'  => $request->jabatan,
-            'no_telp'  => $request->no_telp,
-            'alamat'   => $request->alamat,
-            'hak_cuti' => $request->hak_cuti,
-            'is_active'=> $request->has('is_active') ? $request->is_active : 1,
+            'nip'                  => $request->nip,
+            'nama'                 => $request->nama,
+            'jabatan'              => $request->jabatan,
+            'no_telp'              => $request->no_telp,
+            'alamat'               => $request->alamat,
+            'hak_cuti_tahunan'     => $request->hak_cuti_tahunan,
+            'hak_cuti_sakit'       => $request->hak_cuti_sakit,
+            'hak_cuti_melahirkan'  => $request->hak_cuti_melahirkan,
+            'hak_cuti_haji'        => $request->hak_cuti_haji,
+            'hak_cuti_penting'     => $request->hak_cuti_penting,
+            'is_active'            => $request->has('is_active') ? $request->is_active : 1,
         ]);
 
         return redirect()->route('admin.data-guru.index')
@@ -101,24 +108,27 @@ class GuruController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nip' => 'required|unique:users,nip',
-            'nama' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'nip'      => 'required|unique:users,nip',
+            'nama'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|min:6',
-            'role' => 'required|in:admin,guru,kepala_sekolah',
+            'role'     => 'required|in:admin,guru,kepala_sekolah',
         ]);
 
         User::create([
-            'nip' => $request->nip,
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-            'role' => $request->role,
-            'no_telp' => $request->telepon,
-            'alamat' => $request->alamat,
-            'hak_cuti_tahunan' => $request->role == 'guru' ? $request->hak_cuti_tahunan : 0,
-            'sisa_hak_cuti' => $request->role == 'guru' ? $request->hak_cuti_tahunan : 0,
-            'is_active' => 1,
+            'nip'                  => $request->nip,
+            'nama'                 => $request->nama,
+            'email'                => $request->email,
+            'password'             => bcrypt($request->password),
+            'role'                 => $request->role,
+            'no_telp'              => $request->telepon,
+            'alamat'               => $request->alamat,
+            'hak_cuti_tahunan'     => $request->role == 'guru' ? ($request->hak_cuti_tahunan    ?? 12) : 0,
+            'hak_cuti_sakit'       => $request->role == 'guru' ? ($request->hak_cuti_sakit       ?? 14) : 0,
+            'hak_cuti_melahirkan'  => $request->role == 'guru' ? ($request->hak_cuti_melahirkan  ?? 90) : 0,
+            'hak_cuti_haji'        => $request->role == 'guru' ? ($request->hak_cuti_haji        ?? 40) : 0,
+            'hak_cuti_penting'     => $request->role == 'guru' ? ($request->hak_cuti_penting     ?? 5)  : 0,
+            'is_active'            => 1,
         ]);
 
         return redirect()->route('admin.guru.index')
@@ -128,7 +138,6 @@ class GuruController extends Controller
     public function show($id)
     {
         $guru = User::findOrFail($id);
-
         $pengajuanCuti = PengajuanCuti::where('user_id', $id)->latest()->paginate(5);
         $historiCuti = HistoriCuti::where('user_id', $id)->latest()->paginate(5);
 
@@ -146,28 +155,29 @@ class GuruController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'nip' => 'required|unique:users,nip,' . $id,
-            'nama' => 'required',
+            'nip'   => 'required|unique:users,nip,' . $id,
+            'nama'  => 'required',
             'email' => 'required|email|unique:users,email,' . $id,
-            'role' => 'required|in:admin,guru,kepala_sekolah',
+            'role'  => 'required|in:admin,guru,kepala_sekolah',
         ]);
 
         $user->update([
-            'nip' => $request->nip,
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'role' => $request->role,
-            'no_telp' => $request->telepon,
-            'alamat' => $request->alamat,
-            'hak_cuti_tahunan' => $request->role == 'guru' ? $request->hak_cuti_tahunan : 0,
-            'sisa_hak_cuti' => $request->role == 'guru' ? $request->sisa_hak_cuti : 0,
-            'is_active' => $request->has('is_active') ? $request->is_active : 1,
+            'nip'                  => $request->nip,
+            'nama'                 => $request->nama,
+            'email'                => $request->email,
+            'role'                 => $request->role,
+            'no_telp'              => $request->telepon,
+            'alamat'               => $request->alamat,
+            'hak_cuti_tahunan'     => $request->role == 'guru' ? ($request->hak_cuti_tahunan    ?? 12) : 0,
+            'hak_cuti_sakit'       => $request->role == 'guru' ? ($request->hak_cuti_sakit       ?? 14) : 0,
+            'hak_cuti_melahirkan'  => $request->role == 'guru' ? ($request->hak_cuti_melahirkan  ?? 90) : 0,
+            'hak_cuti_haji'        => $request->role == 'guru' ? ($request->hak_cuti_haji        ?? 40) : 0,
+            'hak_cuti_penting'     => $request->role == 'guru' ? ($request->hak_cuti_penting     ?? 5)  : 0,
+            'is_active'            => $request->has('is_active') ? $request->is_active : 1,
         ]);
 
         if ($request->password) {
-            $user->update([
-                'password' => bcrypt($request->password)
-            ]);
+            $user->update(['password' => bcrypt($request->password)]);
         }
 
         return redirect()->route('admin.guru.index')

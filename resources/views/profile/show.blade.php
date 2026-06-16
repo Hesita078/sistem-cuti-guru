@@ -86,7 +86,7 @@
                                 <label class="form-label">Hak Cuti</label>
                                 <input type="text"
                                        class="form-control"
-                                       value="{{ auth()->user()->hak_cuti }} hari"
+                                       value="{{ auth()->user()->hak_cuti_tahunan }} hari"
                                        disabled>
                             </div>
                         @endif

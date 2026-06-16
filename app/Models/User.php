@@ -19,9 +19,11 @@ class User extends Authenticatable
         'jabatan',
         'no_telp',
         'alamat',
-        // 'telepon',
-        // 'hak_cuti_tahunan',
-        'hak_cuti',
+        'hak_cuti_tahunan',
+        'hak_cuti_sakit',
+        'hak_cuti_melahirkan',
+        'hak_cuti_haji',
+        'hak_cuti_penting',
         'is_active',
     ];
 
@@ -76,7 +78,24 @@ class User extends Authenticatable
     public function resetHakCuti()
     {
         $this->update([
-            'hak_cuti' => 12, // reset ke default 12 hari
+            'hak_cuti_tahunan'    => 12,
+            'hak_cuti_sakit'      => 14,
+            'hak_cuti_melahirkan' => 90,
+            'hak_cuti_haji'       => 40,
+            'hak_cuti_penting'    => 5,
         ]);
+    }
+
+    // Helper: ambil hak cuti berdasarkan jenis
+    public function getHakCutiByJenis(string $jenis): int
+    {
+        return match($jenis) {
+            'Cuti Tahunan'        => $this->hak_cuti_tahunan    ?? 12,
+            'Cuti Sakit'          => $this->hak_cuti_sakit       ?? 14,
+            'Cuti Melahirkan'     => $this->hak_cuti_melahirkan  ?? 90,
+            'Cuti Ibadah Haji'    => $this->hak_cuti_haji        ?? 40,
+            'Cuti Alasan Penting' => $this->hak_cuti_penting     ?? 5,
+            default               => 0,
+        };
     }
 }

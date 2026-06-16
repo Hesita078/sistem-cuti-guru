@@ -360,7 +360,7 @@
             </div>
         </div>
         <div class="pcr-banner-right">
-            <span class="pcr-banner-num">{{ auth()->user()->hak_cuti }}</span>
+            <span class="pcr-banner-num">{{ auth()->user()->hak_cuti_tahunan }}</span>
             <span class="pcr-banner-unit">hari</span>
         </div>
     </div>
@@ -445,7 +445,7 @@
                             <span>Jumlah Hari Kerja: <strong id="jumlahHari">0</strong> hari</span>
                         </div>
                         <div class="pcr-info-hari-right">
-                            Sisa hak cuti: <strong id="sisaCuti">{{ auth()->user()->hak_cuti }}</strong> hari
+                            Sisa hak cuti: <strong id="sisaCuti">{{ auth()->user()->hak_cuti_tahunan }}</strong>
                         </div>
                     </div>
                 </div>
@@ -497,7 +497,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/id.min.js"></script>
 <script>
 
-const hakCutiAwal = {{ auth()->user()->hak_cuti }};
+const hakCutiAwal = {{ auth()->user()->hak_cuti_tahunan }};
 const tahunIni    = new Date().getFullYear();
 let cutiBersamaMap = {};
 

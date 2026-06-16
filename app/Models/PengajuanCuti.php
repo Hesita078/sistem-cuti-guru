@@ -28,10 +28,10 @@ class PengajuanCuti extends Model
     ];
 
     protected $casts = [
-        'tanggal_mulai' => 'date',
-        'tanggal_selesai' => 'date',
+        'tanggal_mulai'            => 'date',
+        'tanggal_selesai'          => 'date',
         'tanggal_verifikasi_admin' => 'datetime',
-        'tanggal_persetujuan' => 'datetime',
+        'tanggal_persetujuan'      => 'datetime',
     ];
 
     // Relationship: Pengajuan cuti milik satu user
@@ -49,14 +49,14 @@ class PengajuanCuti extends Model
     // Helper: Generate kode pengajuan otomatis
     public static function generateKodePengajuan()
     {
-        $date = now()->format('Ymd');
+        $date     = now()->format('Ymd');
         $lastCuti = self::whereDate('created_at', now()->toDateString())
                         ->latest()
                         ->first();
 
         if ($lastCuti) {
             $lastNumber = (int) substr($lastCuti->kode_pengajuan, -3);
-            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+            $newNumber  = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
         } else {
             $newNumber = '001';
         }
@@ -64,14 +64,18 @@ class PengajuanCuti extends Model
         return 'CUTI-' . $date . '-' . $newNumber;
     }
 
-    public function getStatusBadgeClass()
-{
-    return match ($this->status) {
-        'menunggu' => 'secondary',
-        'disetujui_admin' => 'info',
-        'disetujui_kepsek' => 'success',
-        'ditolak' => 'danger',
-        default => 'secondary',
-    };
-}
+    // ✅ FIX: Nilai status disesuaikan dengan yang dipakai di controller
+    public function getStatusBadgeClass(): string
+    {
+        return match ($this->status) {
+            'Menunggu Verifikasi Admin'           => 'warning',
+            'Menunggu Persetujuan Kepala Sekolah' => 'info',
+            'Disetujui Kepala Sekolah'            => 'success',
+            'Ditolak Admin'                       => 'danger',
+            'Ditolak Kepala Sekolah'              => 'danger',
+            default                               => 'secondary',
+        };
+    }
+
+
 }

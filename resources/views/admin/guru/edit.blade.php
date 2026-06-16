@@ -193,7 +193,7 @@
                             <div class="pce-input-wrap">
                                 <i class="bi bi-calendar-check pce-input-icon"></i>
                                 <input type="number" name="hak_cuti" class="pce-input" min="0"
-                                       value="{{ old('hak_cuti', $user->hak_cuti) }}"
+                                       value="{{ old('hak_cuti', $user->hak_cuti_tahunan) }}"
                                        placeholder="0">
                             </div>
                         </div>

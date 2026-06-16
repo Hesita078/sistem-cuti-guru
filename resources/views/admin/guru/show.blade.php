@@ -95,7 +95,7 @@
             @if($guru->role == 'guru')
             @php
                 $hakTahunan  = $guru->hak_cuti_tahunan ?? 0;
-                $sisaCuti    = $guru->hak_cuti ?? 0;
+                $sisaCuti    = $guru->hak_cuti_tahunan ?? 0;
                 $terpakai    = $hakTahunan - $sisaCuti;
                 $persentase  = $hakTahunan > 0 ? ($sisaCuti / $hakTahunan) * 100 : 0;
                 $barColor    = $persentase > 50 ? '#4a9e72' : ($persentase > 25 ? '#c97a50' : '#c45f6e');

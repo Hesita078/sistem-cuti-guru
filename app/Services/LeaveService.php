@@ -37,7 +37,7 @@ class LeaveService
             ->where('status', 'approved')
             ->sum('total_days');
 
-        $sisa = $user->hak_cuti - $sudahDipakai;
+        $sisa = $user->hak_cuti_tahunan - $sudahDipakai;
 
         if ($totalDays > $sisa) {
             throw ValidationException::withMessages([
@@ -110,6 +110,6 @@ class LeaveService
             ->where('status', 'approved')
             ->sum('total_days');
 
-        return max(0, $user->hak_cuti - $dipakai);
+        return max(0, $user->hak_cuti_tahunan - $dipakai);
     }
 }

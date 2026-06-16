@@ -141,7 +141,7 @@
                     <td>{{ $item->nama }}</td>
                     <td>{{ $item->nip ?? '-' }}</td>
                     <td>{{ $item->jabatan ?? '-' }}</td>
-                    <td style="text-align:center">{{ $item->hak_cuti }}</td>
+                    <td style="text-align:center">{{ $item->hak_cuti_tahunan }}</td>
                     <td style="text-align:center">{{ $item->cuti_diambil }}</td>
                     <td style="text-align:center">{{ $item->sisa_cuti }}</td>
                     <td>{{ $item->jenis_cuti_diambil }}</td>

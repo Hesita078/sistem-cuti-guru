@@ -112,7 +112,7 @@
                                             <p><strong>Jumlah Hari:</strong><br>
                                                 <span class="fw-bold text-primary">{{ $item->jumlah_hari }} hari</span>
                                             </p>
-                                            <p><strong>Sisa Hak Cuti:</strong><br>{{ $item->user->hak_cuti }} hari</p>
+                                            <p><strong>Sisa Hak Cuti:</strong><br>{{ $item->user->hak_cuti_tahunan }} hari</p>
                                         </div>
                                     </div>
                                     <hr>

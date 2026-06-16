@@ -225,13 +225,13 @@
                     <td style="text-align:center;">
                         <span class="hc-days-badge">
                             <i class="bi bi-calendar2"></i>
-                            {{ $item->hak_cuti }} hari
+                            {{ $item->hak_cuti_tahunan }} hari
                         </span>
                     </td>
                     <td style="text-align:center;">
-                        @if($item->hak_cuti > 6)
+                        @if($item->hak_cuti_tahunan > 6)
                             <span class="hc-pill pill-aman">Aman</span>
-                        @elseif($item->hak_cuti > 0)
+                        @elseif($item->hak_cuti_tahunan > 0)
                             <span class="hc-pill pill-terbatas">Terbatas</span>
                         @else
                             <span class="hc-pill pill-habis">Habis</span>

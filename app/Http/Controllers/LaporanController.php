@@ -123,7 +123,7 @@ class LaporanController extends Controller
                     ->where('status', 'Ditangguhkan')
                     ->exists();
 
-                $hakCuti = $guru->hak_cuti ?? 12;
+                $hakCuti = $guru->hak_cuti_tahunan ?? 12;
 
                 return (object) [
                     'nama' => $guru->nama,

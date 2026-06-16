@@ -61,11 +61,12 @@ class PengajuanCutiController extends Controller
             'dokumen_penting'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
-        $tanggalMulai   = Carbon::parse($request->tanggal_mulai);
-        $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
+        // ✅ FIX: Gunakan timezone Asia/Jakarta agar tidak salah baca hari
+        $tanggalMulai   = Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta');
+        $tanggalSelesai = Carbon::parse($request->tanggal_selesai, 'Asia/Jakarta');
 
-        // VALIDASI TIDAK BOLEH SEBELUM HARI INI
-        if ($tanggalMulai->startOfDay()->lt(Carbon::today())) {
+        // ✅ FIX: Gunakan copy()->startOfDay() + timezone WIB
+        if ($tanggalMulai->copy()->startOfDay()->lt(Carbon::today('Asia/Jakarta'))) {
             return back()->withErrors(['tanggal_mulai' => 'Tanggal mulai tidak boleh sebelum hari ini.'])->withInput();
         }
 
@@ -97,8 +98,8 @@ class PengajuanCutiController extends Controller
         $jumlahHari = $this->hitungHariKerja($tanggalMulai, $tanggalSelesai);
 
         if ($request->jenis_cuti == 'Cuti Tahunan') {
-            if ($user->hak_cuti <= 0) return back()->with('error', 'Hak cuti tahunan Anda sudah habis.')->withInput();
-            if ($jumlahHari > $user->hak_cuti) return back()->with('error', 'Pengajuan melebihi sisa hak cuti Anda (' . $user->hak_cuti . ' hari).')->withInput();
+            if ($user->hak_cuti_tahunan <= 0) return back()->with('error', 'Hak cuti tahunan Anda sudah habis.')->withInput();
+            if ($jumlahHari > $user->hak_cuti_tahunan) return back()->with('error', 'Pengajuan melebihi sisa hak cuti Anda (' . $user->hak_cuti_tahunan . ' hari).')->withInput();
             if ($jumlahHari > 12) return back()->with('error', 'Cuti tahunan maksimal 12 hari.')->withInput();
             if ($jumlahHari < 3) return back()->with('error', 'Minimal cuti tahunan adalah 3 hari.')->withInput();
         }
@@ -203,15 +204,15 @@ class PengajuanCutiController extends Controller
             'dokumen_penting'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
-        $tanggalMulai   = Carbon::parse($request->tanggal_mulai);
-        $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
+        // ✅ FIX: Gunakan timezone Asia/Jakarta agar tidak salah baca hari
+        $tanggalMulai   = Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta');
+        $tanggalSelesai = Carbon::parse($request->tanggal_selesai, 'Asia/Jakarta');
 
-        // VALIDASI TIDAK BOLEH SEBELUM HARI INI
-        if ($tanggalMulai->startOfDay()->lt(Carbon::today())) {
+        // ✅ FIX: Gunakan copy()->startOfDay() + timezone WIB
+        if ($tanggalMulai->copy()->startOfDay()->lt(Carbon::today('Asia/Jakarta'))) {
             return back()->withErrors(['tanggal_mulai' => 'Tanggal mulai tidak boleh sebelum hari ini.'])->withInput();
         }
 
-        // VALIDASI WEEKEND
         if ($tanggalMulai->isWeekend()) {
             return back()->withErrors(['tanggal_mulai' => 'Tanggal mulai tidak boleh hari Sabtu atau Minggu.'])->withInput();
         }
@@ -219,7 +220,6 @@ class PengajuanCutiController extends Controller
             return back()->withErrors(['tanggal_selesai' => 'Tanggal selesai tidak boleh hari Sabtu atau Minggu.'])->withInput();
         }
 
-        // VALIDASI LIBUR NASIONAL
         $liburMulai = \App\Models\Holiday::where('date', $tanggalMulai->format('Y-m-d'))->first();
         if ($liburMulai) {
             return back()->withErrors(['tanggal_mulai' => "Tanggal mulai adalah hari libur: \"{$liburMulai->name}\". Silakan pilih tanggal lain."])->withInput();
@@ -229,7 +229,6 @@ class PengajuanCutiController extends Controller
             return back()->withErrors(['tanggal_selesai' => "Tanggal selesai adalah hari libur: \"{$liburSelesai->name}\". Silakan pilih tanggal lain."])->withInput();
         }
 
-        // VALIDASI CUTI BERSAMA
         $cutiBersamaMulai = CutiBersama::where('tanggal', $tanggalMulai->format('Y-m-d'))->first();
         if ($cutiBersamaMulai) {
             return back()->withErrors(['tanggal_mulai' => "Tanggal mulai adalah Cuti Bersama: \"{$cutiBersamaMulai->nama}\". Silakan pilih tanggal lain."])->withInput();
@@ -239,14 +238,12 @@ class PengajuanCutiController extends Controller
             return back()->withErrors(['tanggal_selesai' => "Tanggal selesai adalah Cuti Bersama: \"{$cutiBersamaSelesai->nama}\". Silakan pilih tanggal lain."])->withInput();
         }
 
-        // HITUNG HARI KERJA
         $jumlahHari = $this->hitungHariKerja($tanggalMulai, $tanggalSelesai);
 
-        // VALIDASI PER JENIS CUTI
         $user = auth()->user();
         if ($request->jenis_cuti === 'Cuti Tahunan') {
-            if ($user->hak_cuti <= 0) return back()->with('error', 'Hak cuti tahunan Anda sudah habis.')->withInput();
-            if ($jumlahHari > $user->hak_cuti) return back()->with('error', 'Pengajuan melebihi sisa hak cuti Anda (' . $user->hak_cuti . ' hari).')->withInput();
+            if ($user->hak_cuti_tahunan <= 0) return back()->with('error', 'Hak cuti tahunan Anda sudah habis.')->withInput();
+            if ($jumlahHari > $user->hak_cuti_tahunan) return back()->with('error', 'Pengajuan melebihi sisa hak cuti Anda (' . $user->hak_cuti_tahunan . ' hari).')->withInput();
             if ($jumlahHari > 12) return back()->with('error', 'Cuti tahunan maksimal 12 hari.')->withInput();
             if ($jumlahHari < 3)  return back()->with('error', 'Minimal cuti tahunan adalah 3 hari.')->withInput();
         }
@@ -270,7 +267,6 @@ class PengajuanCutiController extends Controller
                 'alasan'          => $request->alasan,
             ];
 
-            // HANDLE FILE BARU (jika diupload)
             $fileKeys = ['surat_dokter', 'surat_melahirkan', 'surat_haji', 'dokumen_penting'];
             $fileKey  = collect($fileKeys)->first(fn($k) => $request->hasFile($k));
             if ($fileKey) {
@@ -451,15 +447,25 @@ class PengajuanCutiController extends Controller
         DB::beginTransaction();
         try {
             $user           = $pengajuan->user;
-            $hakCutiSebelum = $user->hak_cuti;
-            $hakCutiSesudah = $hakCutiSebelum - $pengajuan->jumlah_hari;
+            $hakCutiSebelum = $user->hak_cuti_tahunan;
+
+            // ✅ FIX: Hanya potong hak cuti tahunan jika jenis = Cuti Tahunan
+            if ($pengajuan->jenis_cuti === 'Cuti Tahunan') {
+                $hakCutiSesudah = $hakCutiSebelum - $pengajuan->jumlah_hari;
+
+                if ($hakCutiSesudah < 0) {
+                    return back()->with('error', 'Hak cuti tahunan guru tidak mencukupi untuk disetujui.');
+                }
+
+                $user->update(['hak_cuti' => $hakCutiSesudah]);
+            } else {
+                $hakCutiSesudah = $hakCutiSebelum;
+            }
 
             $pengajuan->update([
                 'status'              => 'Disetujui Kepala Sekolah',
                 'tanggal_persetujuan' => now(),
             ]);
-
-            $user->update(['hak_cuti' => $hakCutiSesudah]);
 
             HistoriCuti::create([
                 'kode_pengajuan'      => $pengajuan->kode_pengajuan,

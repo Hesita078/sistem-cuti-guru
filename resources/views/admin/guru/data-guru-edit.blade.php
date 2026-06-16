@@ -117,7 +117,7 @@
                                     type="number"
                                     name="hak_cuti"
                                     class="form-control @error('hak_cuti') is-invalid @enderror"
-                                    value="{{ old('hak_cuti', $guru->hak_cuti) }}"
+                                    value="{{ old('hak_cuti', $guru->hak_cuti_tahunan) }}"
                                     min="0"
                                     placeholder="Contoh: 12"
                                     required
